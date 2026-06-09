@@ -1,0 +1,141 @@
+{
+  "account": {
+    "iban": "DE89370400440532013000"
+  },
+  "transactions": {
+    "booked": [
+      {
+        "transactionId": "FJ-TX-1001",
+        "bookingDate": "2026-05-02",
+        "valueDate": "2026-05-03",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-23.40"
+        },
+        "creditorName": "Greenfield Grocers",
+        "remittanceInformationUnstructured": "Card payment groceries",
+        "bankTransactionCode": "PMNT-CCRD-POSD"
+      },
+      {
+        "transactionId": "FJ-TX-1002",
+        "bookingDate": "2026-05-04",
+        "valueDate": "2026-05-04",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-4.80"
+        },
+        "creditorName": "Beanhouse Coffee",
+        "remittanceInformationUnstructured": "Card payment cafe",
+        "bankTransactionCode": "PMNT-CCRD-POSD"
+      },
+      {
+        "transactionId": "FJ-TX-1003",
+        "bookingDate": "2026-05-05",
+        "valueDate": "2026-05-05",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "2450.00"
+        },
+        "debtorName": "Brightline Consulting GmbH",
+        "remittanceInformationUnstructured": "Salary May 2026",
+        "bankTransactionCode": "PMNT-RCDT-SALA"
+      },
+      {
+        "transactionId": "FJ-TX-1004",
+        "bookingDate": "2026-05-06",
+        "valueDate": "2026-05-07",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-890.00"
+        },
+        "creditorName": "Hausverwaltung Lindenhof",
+        "remittanceInformationUnstructured": "Rent May 2026 Apartment 4B",
+        "bankTransactionCode": "PMNT-ICDT-STDO"
+      },
+      {
+        "transactionId": "FJ-TX-1005",
+        "bookingDate": "2026-05-09",
+        "valueDate": "2026-05-09",
+        "transactionAmount": {
+          "currency": "USD",
+          "amount": "-129.99"
+        },
+        "creditorName": "Nimbus Cloud Services Inc",
+        "remittanceInformationUnstructured": "Annual subscription, charged in USD",
+        "bankTransactionCode": "PMNT-CCRD-POSD"
+      },
+      {
+        "transactionId": "FJ-TX-1006",
+        "bookingDate": "2026-05-12",
+        "valueDate": "2026-05-12",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "34.50"
+        },
+        "debtorName": "Greenfield Grocers",
+        "remittanceInformationUnstructured": "Refund for returned goods, order 58823",
+        "bankTransactionCode": "PMNT-RCDT-ESCT"
+      },
+      {
+        "transactionId": "FJ-TX-1007",
+        "bookingDate": "2026-05-15",
+        "valueDate": "2026-05-15",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-62.10"
+        },
+        "creditorName": "Cityworks Energy",
+        "remittanceInformationUnstructured": "Electricity April 2026, contract 99-1204",
+        "bankTransactionCode": "PMNT-IDDT-ESDD"
+      },
+      {
+        "transactionId": "FJ-TX-1008",
+        "bookingDate": "2026-05-20",
+        "valueDate": "2026-05-20",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-200.00"
+        },
+        "creditorName": "Fjord Bank ATM Bergmannstrasse",
+        "remittanceInformationUnstructured": "Cash withdrawal",
+        "bankTransactionCode": "PMNT-CCRD-CWDL"
+      },
+      {
+        "transactionId": "FJ-TX-1009",
+        "bookingDate": "2026-05-26",
+        "valueDate": "2026-05-27",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-48.75"
+        },
+        "creditorName": "Trattoria Bel Mare",
+        "remittanceInformationUnstructured": "Card payment restaurant",
+        "bankTransactionCode": "PMNT-CCRD-POSD"
+      }
+    ],
+    "pending": [
+      {
+        "transactionId": "FJ-TX-1010",
+        "valueDate": "2026-06-01",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-15.20"
+        },
+        "creditorName": "Corner Pharmacy",
+        "remittanceInformationUnstructured": "Card authorization pharmacy",
+        "bankTransactionCode": "PMNT-CCRD-POSD"
+      },
+      {
+        "transactionId": "FJ-TX-1011",
+        "valueDate": "2026-06-02",
+        "transactionAmount": {
+          "currency": "EUR",
+          "amount": "-77.00"
+        },
+        "creditorName": "Apex Fitness Studio",
+        "remittanceInformationUnstructured": "Membership June 2026",
+        "bankTransactionCode": "PMNT-IDDT-ESDD"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "accounts": [
+    {
+      "depositAccount": {
+        "accountId": "GR-330011",
+        "accountType": "CHECKING",
+        "nickname": "Everyday Checking",
+        "status": "OPEN",
+        "currency": {
+          "currencyCode": "EUR"
+        }
+      }
+    },
+    {
+      "depositAccount": {
+        "accountId": "GR-440022",
+        "accountType": "SAVINGS",
+        "nickname": "Holiday Fund",
+        "status": "OPEN",
+        "currency": {
+          "currencyCode": "EUR"
+        }
+      }
+    }
+  ]
+}
