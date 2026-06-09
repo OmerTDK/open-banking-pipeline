@@ -1,0 +1,220 @@
+"""Validation tests for the canonical account and transaction models."""
+
+import hashlib
+from datetime import date
+from decimal import Decimal
+from typing import Any
+
+import pytest
+from pydantic import ValidationError
+
+from open_banking_pipeline.canonical import (
+    CanonicalAccount,
+    CanonicalTransaction,
+    SourceBank,
+    TransactionCategory,
+    TransactionStatus,
+    derive_account_id,
+    derive_transaction_id,
+)
+
+OMIT = object()
+
+
+def build_fields(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    merged = {**defaults, **overrides}
+    return {name: value for name, value in merged.items() if value is not OMIT}
+
+
+def make_account(**overrides: Any) -> CanonicalAccount:
+    defaults: dict[str, Any] = {
+        "source_bank": SourceBank.FJORD,
+        "source_account_id": "FJ-ACC-001",
+        "account_id": derive_account_id(SourceBank.FJORD, "FJ-ACC-001"),
+        "display_name": "Main Current Account",
+        "currency": "EUR",
+        "iban": "DE89370400440532013000",
+    }
+    return CanonicalAccount(**build_fields(defaults, overrides))
+
+
+def make_transaction(**overrides: Any) -> CanonicalTransaction:
+    defaults: dict[str, Any] = {
+        "source_bank": SourceBank.FJORD,
+        "source_account_id": "FJ-ACC-001",
+        "source_transaction_id": "FJ-TX-1001",
+        "account_id": derive_account_id(SourceBank.FJORD, "FJ-ACC-001"),
+        "transaction_id": derive_transaction_id(SourceBank.FJORD, "FJ-ACC-001", "FJ-TX-1001"),
+        "status": TransactionStatus.BOOKED,
+        "booking_date": date(2026, 5, 2),
+        "value_date": date(2026, 5, 3),
+        "amount": Decimal("-23.40"),
+        "currency": "EUR",
+        "counterparty_name": "Greenfield Grocers",
+        "description": "Card payment groceries",
+        "raw_category": "PMNT-CCRD-POSD",
+        "category": TransactionCategory.GROCERIES,
+    }
+    return CanonicalTransaction(**build_fields(defaults, overrides))
+
+
+class TestIdempotencyKeyDerivation:
+    def test_derive_account_id_prefixes_source_bank(self) -> None:
+        assert derive_account_id(SourceBank.FJORD, "FJ-ACC-001") == "fjord:FJ-ACC-001"
+
+    def test_derive_transaction_id_is_documented_sha256(self) -> None:
+        expected = hashlib.sha256(b"fjord\x1fFJ-ACC-001\x1fFJ-TX-1001").hexdigest()
+
+        derived = derive_transaction_id(SourceBank.FJORD, "FJ-ACC-001", "FJ-TX-1001")
+
+        assert derived == expected
+
+    def test_derive_transaction_id_is_deterministic(self) -> None:
+        first = derive_transaction_id(SourceBank.GRANITE, "GR-330011", "GR-TXN-88001")
+        second = derive_transaction_id(SourceBank.GRANITE, "GR-330011", "GR-TXN-88001")
+
+        assert first == second
+
+    def test_derive_transaction_id_differs_across_banks(self) -> None:
+        fjord_key = derive_transaction_id(SourceBank.FJORD, "ACC-1", "TX-1")
+        granite_key = derive_transaction_id(SourceBank.GRANITE, "ACC-1", "TX-1")
+
+        assert fjord_key != granite_key
+
+    def test_derive_transaction_id_differs_across_accounts(self) -> None:
+        first_account = derive_transaction_id(SourceBank.KRONO, "KR-7701", "TX-1")
+        second_account = derive_transaction_id(SourceBank.KRONO, "KR-7702", "TX-1")
+
+        assert first_account != second_account
+
+
+class TestCanonicalAccount:
+    def test_valid_account_constructs(self) -> None:
+        account = make_account()
+
+        assert account.account_id == "fjord:FJ-ACC-001"
+        assert account.currency == "EUR"
+
+    def test_account_id_must_match_derivation(self) -> None:
+        with pytest.raises(ValidationError, match="account_id"):
+            make_account(account_id="fjord:SOMETHING-ELSE")
+
+    def test_empty_display_name_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_account(display_name="")
+
+    def test_lowercase_currency_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_account(currency="eur")
+
+    def test_account_is_immutable(self) -> None:
+        account = make_account()
+
+        with pytest.raises(ValidationError):
+            account.display_name = "Renamed"
+
+    def test_unknown_field_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_account(balance=Decimal("100.00"))
+
+    def test_iban_is_optional(self) -> None:
+        account = make_account(iban=None)
+
+        assert account.iban is None
+
+
+class TestCanonicalTransaction:
+    def test_valid_booked_transaction_constructs(self) -> None:
+        transaction = make_transaction()
+
+        assert transaction.status is TransactionStatus.BOOKED
+        assert transaction.amount == Decimal("-23.40")
+
+    def test_transaction_id_must_match_derivation(self) -> None:
+        with pytest.raises(ValidationError, match="transaction_id"):
+            make_transaction(transaction_id="0" * 64)
+
+    def test_account_id_must_match_derivation(self) -> None:
+        with pytest.raises(ValidationError, match="account_id"):
+            make_transaction(account_id="fjord:WRONG-ACCOUNT")
+
+    def test_booked_transaction_requires_booking_date(self) -> None:
+        with pytest.raises(ValidationError, match="booking_date"):
+            make_transaction(booking_date=None)
+
+    def test_pending_transaction_without_booking_date_is_valid(self) -> None:
+        transaction = make_transaction(
+            status=TransactionStatus.PENDING,
+            booking_date=None,
+            value_date=None,
+        )
+
+        assert transaction.status is TransactionStatus.PENDING
+        assert transaction.booking_date is None
+
+    def test_zero_amount_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="zero"):
+            make_transaction(amount=Decimal("0.00"))
+
+    def test_amount_preserves_decimal_precision(self) -> None:
+        transaction = make_transaction(amount=Decimal("-1234.56"))
+
+        assert transaction.amount == Decimal("-1234.56")
+
+    def test_refund_amount_is_positive_inflow(self) -> None:
+        refund = make_transaction(amount=Decimal("12.99"))
+
+        assert refund.amount > 0
+
+    def test_lowercase_currency_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_transaction(currency="usd")
+
+    def test_wrong_length_currency_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_transaction(currency="EURO")
+
+    def test_empty_source_transaction_id_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_transaction(
+                source_transaction_id="",
+                transaction_id=derive_transaction_id(SourceBank.FJORD, "FJ-ACC-001", ""),
+            )
+
+    def test_category_defaults_to_uncategorized(self) -> None:
+        transaction = make_transaction(category=OMIT)
+
+        assert transaction.category is TransactionCategory.UNCATEGORIZED
+
+    def test_unknown_category_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_transaction(category="crypto")
+
+    def test_counterparty_is_optional(self) -> None:
+        transaction = make_transaction(counterparty_name=None, counterparty_account=None)
+
+        assert transaction.counterparty_name is None
+
+    def test_transaction_is_immutable(self) -> None:
+        transaction = make_transaction()
+
+        with pytest.raises(ValidationError):
+            transaction.amount = Decimal("1.00")
+
+    def test_unknown_field_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            make_transaction(merchant_code="5411")
+
+    def test_dict_round_trip_preserves_equality(self) -> None:
+        transaction = make_transaction()
+
+        restored = CanonicalTransaction.model_validate(transaction.model_dump())
+
+        assert restored == transaction
+
+    def test_json_round_trip_preserves_equality(self) -> None:
+        transaction = make_transaction()
+
+        restored = CanonicalTransaction.model_validate_json(transaction.model_dump_json())
+
+        assert restored == transaction
