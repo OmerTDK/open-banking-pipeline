@@ -4,6 +4,8 @@ Multi-bank PSD2-style ingestion into a canonical, categorized transaction schema
 
 > Status: 🚧 under construction — not yet at definition-of-done.
 
+Phase 0 done: canonical pydantic v2 schema with deterministic idempotency keys, fixture sets for three divergent mock banks (PSD2-style JSON, FDX-style JSON, legacy CSV), 54 passing tests, ADR-0001.
+
 ## Why this exists
 
 <!-- System narrative: the problem, why it is interesting, what it demonstrates. -->
