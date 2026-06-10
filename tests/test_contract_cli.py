@@ -203,6 +203,42 @@ class TestConsumerEnforcement:
         assert main(["check", "--contracts-dir", str(contracts_dir)]) == CHECK_FAILED
 
 
+class TestDuplicateSubjects:
+    def shadow_artifact(self, contracts_dir: Path) -> None:
+        real_text = (contracts_dir / "canonical_transaction.json").read_text(encoding="utf-8")
+        (contracts_dir / "zz_shadow.json").write_text(real_text, encoding="utf-8")
+
+    def test_two_artifacts_declaring_one_subject_fail_loudly(
+        self, contracts_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self.shadow_artifact(contracts_dir)
+
+        exit_code = main(["check", "--require-fresh", "--contracts-dir", str(contracts_dir)])
+
+        assert exit_code == CHECK_FAILED
+        output = capsys.readouterr().out
+        assert "canonical_transaction" in output
+        assert "zz_shadow.json" in output
+        assert "canonical_transaction.json" in output
+
+    def test_a_fresh_shadow_cannot_mask_a_corrupted_artifact(self, contracts_dir: Path) -> None:
+        self.shadow_artifact(contracts_dir)
+        artifact = load_artifact(contracts_dir, "canonical_transaction")
+        artifact["fields"].append(
+            {"name": "legacy_flag", "type": "boolean", "nullable": False, "required": True}
+        )
+        dump_artifact(contracts_dir, "canonical_transaction", artifact)
+
+        exit_code = main(["check", "--require-fresh", "--contracts-dir", str(contracts_dir)])
+
+        assert exit_code == CHECK_FAILED
+
+    def test_generate_refuses_duplicate_subjects(self, contracts_dir: Path) -> None:
+        self.shadow_artifact(contracts_dir)
+
+        assert main(["generate", "--contracts-dir", str(contracts_dir)]) == CHECK_FAILED
+
+
 class TestRepositoryContracts:
     def test_committed_contracts_pass_the_strict_check(self) -> None:
         assert main(["check", "--require-fresh"]) == CHECK_OK

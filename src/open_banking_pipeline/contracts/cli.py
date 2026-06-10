@@ -36,6 +36,10 @@ EXIT_COMPATIBLE = 0
 EXIT_INCOMPATIBLE = 1
 
 
+class DuplicateSubjectError(Exception):
+    """Two committed artifact files declare the same subject; refusing to pick one."""
+
+
 @dataclass(frozen=True)
 class Assessment:
     """Everything `check` and `generate` need to know about code vs committed state."""
@@ -52,7 +56,11 @@ def main(argv: list[str] | None = None) -> int:
     """Run one contracts command; return 0 when the contracts are compatible."""
     arguments = _parse_arguments(argv)
     derived = generate_all_contracts()
-    assessment = assess_contracts(derived, arguments.contracts_dir)
+    try:
+        assessment = assess_contracts(derived, arguments.contracts_dir)
+    except DuplicateSubjectError as error:
+        print(f"PROBLEM: {error}")
+        return EXIT_INCOMPATIBLE
     if arguments.command == "generate":
         return _generate(derived, assessment, arguments.contracts_dir)
     return _check(assessment, require_fresh=arguments.require_fresh)
@@ -158,9 +166,17 @@ def _load_committed_contracts(contracts_dir: Path) -> dict[str, tuple[Contract, 
     if not contracts_dir.is_dir():
         return {}
     committed = {}
+    artifact_paths: dict[str, Path] = {}
     for artifact_path in sorted(contracts_dir.glob("*.json")):
         artifact_text = artifact_path.read_text(encoding="utf-8")
         contract = parse_contract(artifact_text)
+        if contract.subject in committed:
+            raise DuplicateSubjectError(
+                f"{artifact_path.name} declares subject {contract.subject!r}, which "
+                f"{artifact_paths[contract.subject].name} already declares; the baseline "
+                f"is ambiguous — remove one of the two files"
+            )
+        artifact_paths[contract.subject] = artifact_path
         committed[contract.subject] = (contract, artifact_text)
     return committed
 
