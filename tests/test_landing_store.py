@@ -195,3 +195,47 @@ class TestDeterministicExport:
 
     def test_empty_store_exports_no_bytes(self, store: LandingStore) -> None:
         assert store.export_transactions_jsonl() == b""
+
+
+class TestLandingColumnSpecs:
+    def test_account_column_specs_match_account_columns(self) -> None:
+        from open_banking_pipeline.ingestion.landing import (
+            ACCOUNT_COLUMNS,
+            ACCOUNTS_LANDING_COLUMNS,
+        )
+
+        assert tuple(column.name for column in ACCOUNTS_LANDING_COLUMNS) == ACCOUNT_COLUMNS
+
+    def test_transaction_column_specs_match_transaction_columns(self) -> None:
+        from open_banking_pipeline.ingestion.landing import (
+            TRANSACTION_COLUMNS,
+            TRANSACTIONS_LANDING_COLUMNS,
+        )
+
+        assert tuple(column.name for column in TRANSACTIONS_LANDING_COLUMNS) == (
+            TRANSACTION_COLUMNS
+        )
+
+    def test_transaction_column_specs_pin_types_and_nullability(self) -> None:
+        from open_banking_pipeline.ingestion.landing import TRANSACTIONS_LANDING_COLUMNS
+
+        columns = {column.name: column for column in TRANSACTIONS_LANDING_COLUMNS}
+
+        assert columns["transaction_id"].is_primary_key
+        assert not columns["transaction_id"].is_nullable
+        assert columns["amount"].sql_type == "DECIMAL(18, 4)"
+        assert not columns["amount"].is_nullable
+        assert columns["booking_date"].sql_type == "DATE"
+        assert columns["booking_date"].is_nullable
+        assert columns["counterparty_name"].is_nullable
+
+    def test_create_statements_are_built_from_the_column_specs(self) -> None:
+        from open_banking_pipeline.ingestion.landing import (
+            CREATE_ACCOUNTS_TABLE,
+            CREATE_TRANSACTIONS_TABLE,
+        )
+
+        assert "account_id VARCHAR PRIMARY KEY" in CREATE_ACCOUNTS_TABLE
+        assert "transaction_id VARCHAR PRIMARY KEY" in CREATE_TRANSACTIONS_TABLE
+        assert "amount DECIMAL(18, 4) NOT NULL" in CREATE_TRANSACTIONS_TABLE
+        assert "booking_date DATE," in CREATE_TRANSACTIONS_TABLE
