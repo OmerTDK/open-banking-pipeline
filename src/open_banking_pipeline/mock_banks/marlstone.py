@@ -35,14 +35,14 @@ class MarlstoneMockBank:
         return self._transactions_page(match.group("account_id"), match.group("offset"))
 
     def _transactions_page(self, account_id: str, offset_cursor: str | None) -> str:
+        if account_id not in self._known_account_ids():
+            raise ValueError(f"unknown marlstone account: {account_id!r}")
         fixture = json.loads((self._bank_dir / "transactions.json").read_text(encoding="utf-8"))
         account_entries = [
             entry
             for entry in fixture["transactions"]
             if entry["depositTransaction"]["accountId"] == account_id
         ]
-        if not account_entries:
-            raise ValueError(f"unknown marlstone account: {account_id!r}")
         page_start = self._parse_offset_cursor(offset_cursor, len(account_entries))
         page_end = page_start + self._page_size
         next_offset = f"{CURSOR_PREFIX}{page_end}" if page_end < len(account_entries) else None
@@ -51,6 +51,10 @@ class MarlstoneMockBank:
             "page": {"nextOffset": next_offset, "total": len(account_entries)},
         }
         return json.dumps(body)
+
+    def _known_account_ids(self) -> set[str]:
+        fixture = json.loads((self._bank_dir / "accounts.json").read_text(encoding="utf-8"))
+        return {entry["depositAccount"]["accountId"] for entry in fixture["accounts"]}
 
     def _parse_offset_cursor(self, offset_cursor: str | None, entry_count: int) -> int:
         if offset_cursor is None:

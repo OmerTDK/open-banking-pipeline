@@ -221,6 +221,18 @@ class TestMarlstoneAdapter:
         with pytest.raises(ValueError, match="unsigned"):
             marlstone_adapter.map_transaction(raw_transaction, marlstone_extract.accounts[0])
 
+    def test_known_account_with_zero_transactions_lands_empty(
+        self, marlstone_fixtures_with_empty_account: Path
+    ) -> None:
+        bank = MarlstoneMockBank(marlstone_fixtures_with_empty_account)
+
+        extract = marlstone_adapter.extract(bank, NO_SLEEP_POLICY)
+
+        assert len(extract.accounts) == 2
+        assert [transaction.source_account_id for transaction in extract.transactions] == [
+            "MS-550033"
+        ]
+
     def test_unknown_status_is_rejected(self, marlstone_extract: BankExtract) -> None:
         raw_transaction = {
             "transactionId": "MS-TXN-00003",

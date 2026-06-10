@@ -190,6 +190,16 @@ class TestMarlstoneMockBank:
         with pytest.raises(ValueError, match="MS-999999"):
             bank.request("/fdx/v6/accounts/MS-999999/transactions")
 
+    def test_known_account_with_zero_transactions_serves_an_empty_page(
+        self, marlstone_fixtures_with_empty_account: Path
+    ) -> None:
+        bank = MarlstoneMockBank(marlstone_fixtures_with_empty_account)
+
+        page = json.loads(bank.request("/fdx/v6/accounts/MS-660044/transactions"))
+
+        assert page["transactions"] == []
+        assert page["page"] == {"nextOffset": None, "total": 0}
+
     def test_invalid_cursor_is_rejected(self) -> None:
         bank = MarlstoneMockBank(FIXTURES_DIR)
 
