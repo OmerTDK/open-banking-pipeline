@@ -1,0 +1,17 @@
+{
+  "consumer": "categorization_engine",
+  "consumes": {
+    "canonical_transaction": {
+      "fields": [
+        "transaction_id",
+        "amount",
+        "currency",
+        "counterparty_name",
+        "description",
+        "raw_category",
+        "category"
+      ],
+      "acknowledged_version": "1.0.0"
+    }
+  }
+}

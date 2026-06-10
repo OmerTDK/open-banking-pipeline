@@ -1,0 +1,150 @@
+{
+  "contract_format": 1,
+  "fields": [
+    {
+      "doc": "Idempotency key: SHA-256 hex of source bank, account id and transaction id; recomputed and enforced by a model validator",
+      "enum_values": null,
+      "name": "transaction_id",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Canonical key of the owning account, '{source_bank}:{source_account_id}'",
+      "enum_values": null,
+      "name": "account_id",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Which bank the transaction came from",
+      "enum_values": [
+        "fjellvik",
+        "marlstone",
+        "taktwerk"
+      ],
+      "name": "source_bank",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "The bank's own account identifier, verbatim",
+      "enum_values": null,
+      "name": "source_account_id",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "The bank's own transaction identifier; content-derived for sources without stable ids (ADR-0001)",
+      "enum_values": null,
+      "name": "source_transaction_id",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Lifecycle state; booked rows must carry a booking_date",
+      "enum_values": [
+        "booked",
+        "pending"
+      ],
+      "name": "status",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Date the bank booked the transaction; required when booked",
+      "enum_values": null,
+      "name": "booking_date",
+      "nullable": true,
+      "required": false,
+      "type": "date"
+    },
+    {
+      "doc": "Date the amount affects the balance, when reported",
+      "enum_values": null,
+      "name": "value_date",
+      "nullable": true,
+      "required": false,
+      "type": "date"
+    },
+    {
+      "doc": "Signed amount in the account currency; negative is an outflow, zero is rejected",
+      "enum_values": null,
+      "name": "amount",
+      "nullable": false,
+      "required": true,
+      "type": "decimal"
+    },
+    {
+      "doc": "ISO 4217 code of the account currency",
+      "enum_values": null,
+      "name": "currency",
+      "nullable": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Counterparty display name, when the source provides one",
+      "enum_values": null,
+      "name": "counterparty_name",
+      "nullable": true,
+      "required": false,
+      "type": "string"
+    },
+    {
+      "doc": "Counterparty account identifier, when the source provides one",
+      "enum_values": null,
+      "name": "counterparty_account",
+      "nullable": true,
+      "required": false,
+      "type": "string"
+    },
+    {
+      "doc": "Free-text remittance information",
+      "enum_values": null,
+      "name": "description",
+      "nullable": true,
+      "required": false,
+      "type": "string"
+    },
+    {
+      "doc": "The bank's category label verbatim; categorizer lineage",
+      "enum_values": null,
+      "name": "raw_category",
+      "nullable": true,
+      "required": false,
+      "type": "string"
+    },
+    {
+      "doc": "Normalized spend category; uncategorized until the categorizer assigns one",
+      "enum_values": [
+        "groceries",
+        "dining",
+        "transport",
+        "utilities",
+        "rent",
+        "salary",
+        "entertainment",
+        "healthcare",
+        "shopping",
+        "travel",
+        "cash_withdrawal",
+        "transfer",
+        "bank_fees",
+        "uncategorized"
+      ],
+      "name": "category",
+      "nullable": false,
+      "required": false,
+      "type": "string"
+    }
+  ],
+  "source": "pydantic:open_banking_pipeline.canonical.CanonicalTransaction",
+  "subject": "canonical_transaction",
+  "version": "1.0.0"
+}

@@ -1,0 +1,56 @@
+{
+  "contract_format": 1,
+  "fields": [
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "account_id",
+      "nullable": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "source_bank",
+      "nullable": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "source_account_id",
+      "nullable": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "display_name",
+      "nullable": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "currency",
+      "nullable": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "iban",
+      "nullable": true,
+      "required": false,
+      "type": "varchar"
+    }
+  ],
+  "source": "duckdb-ddl:open_banking_pipeline.ingestion.landing.accounts",
+  "subject": "landing_accounts",
+  "version": "1.0.0"
+}
