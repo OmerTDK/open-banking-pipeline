@@ -24,9 +24,10 @@ from typing import Any
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 
-MINIMUM_ACCOUNTS_PER_BANK = 2
-MINIMUM_TRANSACTIONS_PER_BANK = 10
-MAXIMUM_TRANSACTIONS_PER_BANK = 20
+EXPECTED_ACCOUNTS_PER_BANK = 2
+FJELLVIK_TRANSACTION_COUNT = 15
+MARLSTONE_TRANSACTION_COUNT = 16
+TAKTWERK_TRANSACTION_COUNT = 15
 
 TAKTWERK_EXPECTED_HEADER = [
     "Booking Date",
@@ -76,17 +77,16 @@ class TestFjellvikFixtures:
     def test_accounts_parse_with_expected_psd2_fields(self) -> None:
         accounts = load_json("fjellvik/accounts.json")["accounts"]
 
-        assert len(accounts) >= MINIMUM_ACCOUNTS_PER_BANK
+        assert len(accounts) == EXPECTED_ACCOUNTS_PER_BANK
         for account in accounts:
             assert account["resourceId"]
             assert account["iban"]
             assert account["currency"]
 
-    def test_transaction_count_within_documented_range(self) -> None:
+    def test_transaction_count_matches_documented_count(self) -> None:
         booked, pending = load_fjellvik_transactions()
 
-        total = len(booked) + len(pending)
-        assert MINIMUM_TRANSACTIONS_PER_BANK <= total <= MAXIMUM_TRANSACTIONS_PER_BANK
+        assert len(booked) + len(pending) == FJELLVIK_TRANSACTION_COUNT
 
     def test_contains_booked_and_pending_transactions(self) -> None:
         booked, pending = load_fjellvik_transactions()
@@ -142,17 +142,16 @@ class TestMarlstoneFixtures:
     def test_accounts_parse_with_expected_fdx_fields(self) -> None:
         accounts = load_json("marlstone/accounts.json")["accounts"]
 
-        assert len(accounts) >= MINIMUM_ACCOUNTS_PER_BANK
+        assert len(accounts) == EXPECTED_ACCOUNTS_PER_BANK
         for entry in accounts:
             deposit_account = entry["depositAccount"]
             assert deposit_account["accountId"]
             assert deposit_account["currency"]["currencyCode"]
 
-    def test_transaction_count_within_documented_range(self) -> None:
+    def test_transaction_count_matches_documented_count(self) -> None:
         transactions = load_marlstone_transactions()
 
-        count = len(transactions)
-        assert MINIMUM_TRANSACTIONS_PER_BANK <= count <= MAXIMUM_TRANSACTIONS_PER_BANK
+        assert len(transactions) == MARLSTONE_TRANSACTION_COUNT
 
     def test_contains_posted_and_pending_statuses(self) -> None:
         statuses = {transaction["status"] for transaction in load_marlstone_transactions()}
@@ -204,17 +203,17 @@ class TestTaktwerkFixtures:
         header, rows = load_taktwerk_rows("accounts.csv")
 
         assert header == ["Account Number", "Account Name", "Currency", "IBAN"]
-        assert len(rows) >= MINIMUM_ACCOUNTS_PER_BANK
+        assert len(rows) == EXPECTED_ACCOUNTS_PER_BANK
 
     def test_transactions_csv_has_exact_legacy_header(self) -> None:
         header, _ = load_taktwerk_rows("transactions_export.csv")
 
         assert header == TAKTWERK_EXPECTED_HEADER
 
-    def test_transaction_count_within_documented_range(self) -> None:
+    def test_transaction_count_matches_documented_count(self) -> None:
         _, rows = load_taktwerk_rows("transactions_export.csv")
 
-        assert MINIMUM_TRANSACTIONS_PER_BANK <= len(rows) <= MAXIMUM_TRANSACTIONS_PER_BANK
+        assert len(rows) == TAKTWERK_TRANSACTION_COUNT
 
     def test_dates_use_legacy_dotted_format(self) -> None:
         _, rows = load_taktwerk_rows("transactions_export.csv")
@@ -264,4 +263,4 @@ class TestTaktwerkFixtures:
         _, rows = load_taktwerk_rows("transactions_export.csv")
 
         account_numbers = {row["Account Number"] for row in rows}
-        assert len(account_numbers) >= MINIMUM_ACCOUNTS_PER_BANK
+        assert len(account_numbers) == EXPECTED_ACCOUNTS_PER_BANK

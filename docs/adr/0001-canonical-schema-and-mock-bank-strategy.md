@@ -29,7 +29,8 @@ original foreign amount and currency of an FX transaction appear only as source-
 in the account currency — satisfiable by every adapter.
 
 All three are served from checked-in fixtures under `fixtures/<bank>/` containing 2 accounts
-and 15–16 transactions each, including the edge cases every adapter must survive: refunds
+each and exactly 15 (fjellvik), 16 (marlstone) and 15 (taktwerk) transactions, including the
+edge cases every adapter must survive: refunds
 (positive inflows from merchants), foreign-currency transactions (represented differently per
 bank), and pending-vs-booked (where the source supports it). Fixture-integrity tests pin
 these properties so the edge cases cannot silently rot.
