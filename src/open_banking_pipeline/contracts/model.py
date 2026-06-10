@@ -16,7 +16,13 @@ JSON_INDENT = 2
 
 
 class FieldContract(BaseModel):
-    """One field of a contracted schema."""
+    """One field of a contracted schema.
+
+    Boolean attribute names mirror the JSON artifact vocabulary (JSON
+    Schema's ``required``/``nullable``, data-contract specs' ``primary_key``)
+    rather than the codebase's ``is_*`` question style, so the artifact keys
+    read as standard contract terminology to external tooling.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -24,6 +30,7 @@ class FieldContract(BaseModel):
     type: str = Field(min_length=1)
     nullable: bool
     required: bool
+    primary_key: bool = False
     enum_values: tuple[str, ...] | None = None
     doc: str | None = None
 

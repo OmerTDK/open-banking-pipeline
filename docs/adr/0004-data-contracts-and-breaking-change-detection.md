@@ -27,9 +27,13 @@ Four subjects, one JSON artifact each under `contracts/`:
 | `landing_transactions` | the `LandingColumn` specs that also build the DuckDB DDL |
 
 Each artifact records, per field: `name`, `type` (normalized scalar or lowercased SQL
-type), `nullable`, `required` (must be provided by the producer), `enum_values` (the full
-value set for enum-typed fields), and `doc` (the semantic note, from the pydantic field
-description). Artifacts are canonical JSON — sorted keys, fixed indent, trailing newline —
+type), `nullable`, `required` (must be provided by the producer), `primary_key` (the
+uniqueness guarantee the landing DDL declares; always `false` for pydantic-derived
+contracts, which have no key concept), `enum_values` (the full value set for enum-typed
+fields), and `doc` (the semantic note, from the pydantic field description). Field
+attribute names mirror standard contract vocabulary (JSON Schema, data-contract specs)
+rather than the codebase's `is_*` boolean style, so the artifact reads natively to
+external tooling. Artifacts are canonical JSON — sorted keys, fixed indent, trailing newline —
 so regeneration of an unchanged contract is byte-identical and any diff is a real change.
 A `contract_format` integer versions the artifact format itself, separately from the
 schema versions it carries.
@@ -53,6 +57,7 @@ cases conservatively:
 | Field type changed (any direction) | breaking |
 | Nullability changed (either direction) | breaking — widening breaks readers, narrowing breaks writers |
 | Optional field became required | breaking |
+| Primary key added or removed | breaking — adding breaks writers (uniqueness now enforced), removing breaks readers (uniqueness guarantee gone) |
 | Enum value removed | breaking |
 | Enum constraint added or removed entirely | breaking |
 | New required field | breaking |

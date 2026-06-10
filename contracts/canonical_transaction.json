@@ -6,6 +6,7 @@
       "enum_values": null,
       "name": "transaction_id",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -14,6 +15,7 @@
       "enum_values": null,
       "name": "account_id",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -26,6 +28,7 @@
       ],
       "name": "source_bank",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -34,6 +37,7 @@
       "enum_values": null,
       "name": "source_account_id",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -42,6 +46,7 @@
       "enum_values": null,
       "name": "source_transaction_id",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -53,6 +58,7 @@
       ],
       "name": "status",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -61,6 +67,7 @@
       "enum_values": null,
       "name": "booking_date",
       "nullable": true,
+      "primary_key": false,
       "required": false,
       "type": "date"
     },
@@ -69,6 +76,7 @@
       "enum_values": null,
       "name": "value_date",
       "nullable": true,
+      "primary_key": false,
       "required": false,
       "type": "date"
     },
@@ -77,6 +85,7 @@
       "enum_values": null,
       "name": "amount",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "decimal"
     },
@@ -85,6 +94,7 @@
       "enum_values": null,
       "name": "currency",
       "nullable": false,
+      "primary_key": false,
       "required": true,
       "type": "string"
     },
@@ -93,6 +103,7 @@
       "enum_values": null,
       "name": "counterparty_name",
       "nullable": true,
+      "primary_key": false,
       "required": false,
       "type": "string"
     },
@@ -101,6 +112,7 @@
       "enum_values": null,
       "name": "counterparty_account",
       "nullable": true,
+      "primary_key": false,
       "required": false,
       "type": "string"
     },
@@ -109,6 +121,7 @@
       "enum_values": null,
       "name": "description",
       "nullable": true,
+      "primary_key": false,
       "required": false,
       "type": "string"
     },
@@ -117,6 +130,7 @@
       "enum_values": null,
       "name": "raw_category",
       "nullable": true,
+      "primary_key": false,
       "required": false,
       "type": "string"
     },
@@ -140,6 +154,7 @@
       ],
       "name": "category",
       "nullable": false,
+      "primary_key": false,
       "required": false,
       "type": "string"
     }

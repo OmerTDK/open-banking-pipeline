@@ -28,6 +28,8 @@ class ChangeType(StrEnum):
     TYPE_CHANGED = "type_changed"
     NULLABILITY_CHANGED = "nullability_changed"
     FIELD_BECAME_REQUIRED = "field_became_required"
+    PRIMARY_KEY_ADDED = "primary_key_added"
+    PRIMARY_KEY_REMOVED = "primary_key_removed"
     ENUM_VALUE_REMOVED = "enum_value_removed"
     ENUM_CONSTRAINT_ADDED = "enum_constraint_added"
     ENUM_CONSTRAINT_REMOVED = "enum_constraint_removed"
@@ -43,6 +45,8 @@ CHANGE_CATEGORIES: dict[ChangeType, ChangeCategory] = {
     ChangeType.TYPE_CHANGED: ChangeCategory.BREAKING,
     ChangeType.NULLABILITY_CHANGED: ChangeCategory.BREAKING,
     ChangeType.FIELD_BECAME_REQUIRED: ChangeCategory.BREAKING,
+    ChangeType.PRIMARY_KEY_ADDED: ChangeCategory.BREAKING,
+    ChangeType.PRIMARY_KEY_REMOVED: ChangeCategory.BREAKING,
     ChangeType.ENUM_VALUE_REMOVED: ChangeCategory.BREAKING,
     ChangeType.ENUM_CONSTRAINT_ADDED: ChangeCategory.BREAKING,
     ChangeType.ENUM_CONSTRAINT_REMOVED: ChangeCategory.BREAKING,
@@ -146,12 +150,30 @@ def _diff_field(subject: str, old: FieldContract, new: FieldContract) -> list[Co
                 subject, change_type, old.name, f"required: {old.required} -> {new.required}"
             )
         )
+    if old.primary_key != new.primary_key:
+        changes.append(_primary_key_change(subject, old.name, new.primary_key))
     changes.extend(_diff_enum_values(subject, old, new))
     if old.doc != new.doc:
         changes.append(
             ContractChange(subject, ChangeType.DOC_CHANGED, old.name, "semantic note changed")
         )
     return changes
+
+
+def _primary_key_change(subject: str, field_name: str, is_now_primary_key: bool) -> ContractChange:
+    if is_now_primary_key:
+        return ContractChange(
+            subject,
+            ChangeType.PRIMARY_KEY_ADDED,
+            field_name,
+            "field became the primary key; writers must now guarantee uniqueness",
+        )
+    return ContractChange(
+        subject,
+        ChangeType.PRIMARY_KEY_REMOVED,
+        field_name,
+        "field is no longer the primary key; readers lose the uniqueness guarantee",
+    )
 
 
 def _diff_enum_values(subject: str, old: FieldContract, new: FieldContract) -> list[ContractChange]:

@@ -114,7 +114,28 @@ class TestLandingTableContracts:
                 assert field.type == column.sql_type.lower()
                 assert field.nullable == column.is_nullable
                 assert field.required == (not column.is_nullable)
+                assert field.primary_key == column.is_primary_key
                 assert field.enum_values is None
+
+    def test_landing_primary_keys_are_part_of_the_contract(
+        self, contracts: dict[str, Contract]
+    ) -> None:
+        transaction_fields = {
+            field.name: field for field in contracts["landing_transactions"].fields
+        }
+        account_fields = {field.name: field for field in contracts["landing_accounts"].fields}
+
+        assert transaction_fields["transaction_id"].primary_key
+        assert account_fields["account_id"].primary_key
+        assert not transaction_fields["amount"].primary_key
+        assert not transaction_fields["account_id"].primary_key
+
+    def test_canonical_model_fields_carry_no_primary_key(
+        self, contracts: dict[str, Contract]
+    ) -> None:
+        for subject in ("canonical_account", "canonical_transaction"):
+            for field in contracts[subject].fields:
+                assert not field.primary_key, f"{subject}.{field.name}"
 
     def test_landing_amount_pins_precision_and_scale(self, contracts: dict[str, Contract]) -> None:
         fields = {field.name: field for field in contracts["landing_transactions"].fields}

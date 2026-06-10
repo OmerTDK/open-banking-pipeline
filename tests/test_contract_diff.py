@@ -20,6 +20,7 @@ def make_field(
     type: str = "decimal",
     nullable: bool = False,
     required: bool = True,
+    primary_key: bool = False,
     enum_values: tuple[str, ...] | None = None,
     doc: str | None = "Signed amount",
 ) -> FieldContract:
@@ -28,6 +29,7 @@ def make_field(
         type=type,
         nullable=nullable,
         required=required,
+        primary_key=primary_key,
         enum_values=enum_values,
         doc=doc,
     )
@@ -121,6 +123,35 @@ class TestBreakingChanges:
         change = single_change(old, new)
 
         assert change.change_type is ChangeType.FIELD_BECAME_REQUIRED
+        assert change.category is ChangeCategory.BREAKING
+
+    def test_primary_key_added_is_breaking(self) -> None:
+        old = make_contract(make_field("transaction_id", type="varchar"))
+        new = make_contract(make_field("transaction_id", type="varchar", primary_key=True))
+
+        change = single_change(old, new)
+
+        assert change.change_type is ChangeType.PRIMARY_KEY_ADDED
+        assert change.category is ChangeCategory.BREAKING
+        assert change.field_name == "transaction_id"
+
+    def test_primary_key_removed_is_breaking(self) -> None:
+        old = make_contract(make_field("transaction_id", type="varchar", primary_key=True))
+        new = make_contract(make_field("transaction_id", type="varchar"))
+
+        change = single_change(old, new)
+
+        assert change.change_type is ChangeType.PRIMARY_KEY_REMOVED
+        assert change.category is ChangeCategory.BREAKING
+        assert change.field_name == "transaction_id"
+
+    def test_retyped_primary_key_column_is_breaking(self) -> None:
+        old = make_contract(make_field("transaction_id", type="varchar", primary_key=True))
+        new = make_contract(make_field("transaction_id", type="integer", primary_key=True))
+
+        change = single_change(old, new)
+
+        assert change.change_type is ChangeType.TYPE_CHANGED
         assert change.category is ChangeCategory.BREAKING
 
     @pytest.mark.parametrize(

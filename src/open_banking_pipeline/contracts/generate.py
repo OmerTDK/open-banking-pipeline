@@ -114,6 +114,7 @@ def _contract_from_landing_columns(
             type=column.sql_type.lower(),
             nullable=column.is_nullable,
             required=not column.is_nullable,
+            primary_key=column.is_primary_key,
         )
         for column in columns
     )
