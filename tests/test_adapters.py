@@ -315,6 +315,30 @@ class TestTaktwerkAdapter:
 
         assert len(extract.transactions) == TAKTWERK_TRANSACTION_COUNT
 
+    def test_export_missing_only_the_final_newline_is_detected_as_truncated(
+        self, taktwerk_extract: BankExtract
+    ) -> None:
+        full_text = (FIXTURES_DIR / "taktwerk" / "transactions_export.csv").read_text()
+        cut_at_row_boundary = full_text[:-1]
+
+        with pytest.raises(TruncatedExportError):
+            taktwerk_adapter.parse_transactions_export(
+                cut_at_row_boundary, taktwerk_extract.accounts
+            )
+
+    def test_export_with_short_row_but_final_newline_is_detected_as_truncated(
+        self, taktwerk_extract: BankExtract
+    ) -> None:
+        full_text = (FIXTURES_DIR / "taktwerk" / "transactions_export.csv").read_text()
+        header_line = full_text.splitlines()[0]
+        short_row = "02.05.2026;03.05.2026;GREENFIELD GROCERS;Kartenzahlung"
+        export_with_short_row = f"{header_line}\n{short_row}\n"
+
+        with pytest.raises(TruncatedExportError):
+            taktwerk_adapter.parse_transactions_export(
+                export_with_short_row, taktwerk_extract.accounts
+            )
+
     def test_persistent_truncation_fails_loudly(self) -> None:
         bank = TaktwerkMockBank(
             FIXTURES_DIR,
