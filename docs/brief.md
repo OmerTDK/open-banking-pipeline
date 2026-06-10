@@ -71,12 +71,15 @@ because the hard parts are architectural, not mechanical:
 
 - **Phase 0** — repo scaffold from the template, CI green, standards wired in; ADR for the
   canonical transaction schema.
-- **Phase 1** — mock bank APIs + fixtures: three banks with divergent shapes.
-- **Phase 2** — connectors with idempotent incremental loads into landing; replay tests.
-- **Phase 3** — canonical mapping layer + categorization; schema-drift tests.
-- **Phase 4** — data contracts + breaking-change detection in CI, including a demonstrated caught
-  break.
-- **Phase 5** — end-to-end run in CI, demo writeup, quantified results in the README.
+- **Phase 1** — mock bank APIs + fixtures (three banks with divergent shapes), per-bank
+  connectors mapping into the canonical schema, idempotent incremental loads into landing;
+  replay tests.
+- **Phase 2** — data contracts + breaking-change detection in CI, including a demonstrated
+  caught break.
+- **Phase 3** — categorization of canonical transactions (the first declared contract
+  consumer); schema-drift tests.
+- **Phase 4** — consumption mart, end-to-end run in CI, demo writeup, quantified results in
+  the README.
 
 Each phase ends with: an ADR, passing tests, and a README update.
 
