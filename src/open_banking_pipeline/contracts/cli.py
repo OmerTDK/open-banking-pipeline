@@ -8,11 +8,16 @@ unacknowledged breaking change to a field a consumer manifest pins.
 artifacts differ from code at all, so merged state always carries regenerated
 artifacts. ``generate`` refuses to overwrite artifacts when the pending
 changes are incompatible — bump the version in ``versions.py`` first.
+
+Both commands consult the subjects ledger: ``check`` hard-fails when a
+recorded subject's artifact is missing or behind its recorded version, and
+``generate`` refuses to recreate a vanished recorded artifact (regenerating
+it would forge baseline continuity; restore it from git instead).
 """
 
 import argparse
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from open_banking_pipeline.contracts.consumers import (
@@ -27,6 +32,14 @@ from open_banking_pipeline.contracts.diff import (
     version_change_problems,
 )
 from open_banking_pipeline.contracts.generate import generate_all_contracts
+from open_banking_pipeline.contracts.ledger import (
+    LEDGER_FILENAME,
+    ledger_problems,
+    load_ledger,
+    merged_ledger,
+    serialize_ledger,
+    vanished_recorded_subjects,
+)
 from open_banking_pipeline.contracts.model import Contract, parse_contract, serialize_contract
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -51,6 +64,8 @@ class Assessment:
     stale_subjects: list[str]
     missing_subjects: list[str]
     format_drift_subjects: list[str]
+    baseline_problems: list[str] = field(default_factory=list)
+    vanished_subjects: list[str] = field(default_factory=list)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,6 +94,8 @@ def assess_contracts(derived: dict[str, Contract], contracts_dir: Path) -> Asses
         *drift.compatibility_problems,
         *_consumer_problems(derived, drift.changes, contracts_dir),
     ]
+    ledger = load_ledger(contracts_dir)
+    committed_versions = {subject: contract.version for subject, (contract, _) in committed.items()}
     return Assessment(
         drift.changes,
         drift.notices,
@@ -86,6 +103,8 @@ def assess_contracts(derived: dict[str, Contract], contracts_dir: Path) -> Asses
         drift.stale_subjects,
         drift.missing_subjects,
         drift.format_drift_subjects,
+        baseline_problems=ledger_problems(ledger, committed_versions),
+        vanished_subjects=vanished_recorded_subjects(ledger, committed_versions),
     )
 
 
@@ -175,6 +194,7 @@ def _check(assessment: Assessment, require_fresh: bool) -> int:
         )
 
     problems = list(assessment.compatibility_problems)
+    problems.extend(assessment.baseline_problems)
     if require_fresh:
         problems.extend(
             f"{subject}: committed artifact does not match the code-derived contract; "
@@ -207,11 +227,27 @@ def _generate(
             print(f"PROBLEM: {problem}")
         print("refusing to regenerate artifacts over incompatible changes")
         return EXIT_INCOMPATIBLE
+    if assessment.vanished_subjects:
+        for subject in assessment.vanished_subjects:
+            print(
+                f"PROBLEM: {subject}: recorded in the subjects ledger but the committed "
+                f"artifact is gone; regenerating it would forge baseline continuity — "
+                f"restore the artifact from git instead"
+            )
+        print("refusing to recreate a vanished recorded artifact")
+        return EXIT_INCOMPATIBLE
     contracts_dir.mkdir(parents=True, exist_ok=True)
     for subject, contract in sorted(derived.items()):
         artifact_path = contracts_dir / f"{subject}.json"
         artifact_path.write_text(serialize_contract(contract), encoding="utf-8")
         print(f"wrote {artifact_path}")
+    ledger = merged_ledger(
+        load_ledger(contracts_dir),
+        {subject: contract.version for subject, contract in derived.items()},
+    )
+    ledger_path = contracts_dir / LEDGER_FILENAME
+    ledger_path.write_text(serialize_ledger(ledger), encoding="utf-8")
+    print(f"wrote {ledger_path}")
     return EXIT_COMPATIBLE
 
 
@@ -221,6 +257,8 @@ def _load_committed_contracts(contracts_dir: Path) -> dict[str, tuple[Contract, 
     committed = {}
     artifact_paths: dict[str, Path] = {}
     for artifact_path in sorted(contracts_dir.glob("*.json")):
+        if artifact_path.name == LEDGER_FILENAME:
+            continue
         artifact_text = artifact_path.read_text(encoding="utf-8")
         contract = parse_contract(artifact_text)
         if contract.subject in committed:

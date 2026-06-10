@@ -84,6 +84,23 @@ overwrite artifacts over an unbumped change — the version bump in `versions.py
 before the artifact refresh, which keeps the semver discipline on the only sanctioned path
 for changing `contracts/`.
 
+### The subjects ledger anchors the baseline
+
+The committed artifacts alone are a forgeable baseline: delete one and the sanctioned
+`generate` command would recreate it from current code at the same version — a breaking
+change ships with no bump, CI green, and the consumer veto bypassed, all without
+hand-editing anything. `contracts/_subjects_ledger.json` closes that path. It is an
+append-only map of subject → last recorded version, written by `generate` (which only
+ever merges versions forward) and consulted by every `check`: a recorded subject whose
+artifact is missing, an artifact whose version is behind its recorded version, a
+committed artifact the ledger does not record, or artifacts existing with no ledger at
+all are hard failures in both check modes. `generate` additionally refuses to recreate a
+vanished recorded artifact — restoring it from git is the only way forward, which puts
+the honest diff back in front of the detector. This is the interim answer to the open
+git-baseline question below: it anchors history in a committed file without making the
+detector depend on git state. Forging continuity now requires editing the ledger itself
+in the same change set — exactly the kind of diff line a reviewer cannot miss.
+
 ### Consumer manifests veto breaking changes to pinned fields
 
 Each consumer commits a manifest under `contracts/consumers/` pinning the exact fields it
@@ -116,8 +133,9 @@ seven `canonical_transaction` fields it will read.
 - **Diffing against the git base branch instead of committed artifacts** — deferred: it
   would close the residual loophole below without trusting the working tree, but it makes
   the detector depend on git state (fetch depth, merge-base resolution) and tests need repo
-  fixtures. The committed-artifact baseline plus generate-refusal covers every honest
-  workflow; the git baseline is the natural extension if that trust assumption ever fails.
+  fixtures. The subjects ledger above is the interim answer: it anchors per-subject history
+  in a committed file with none of the git-state coupling. The git baseline remains the
+  natural extension if content-level (not version-level) continuity ever needs enforcing.
 - **Treating enum-value additions as breaking** — rejected: it would force a major bump
   for every new bank or spend category. The cost is a documented consumer obligation:
   readers must tolerate unknown enum values.
@@ -129,10 +147,12 @@ seven `canonical_transaction` fields it will read.
   forgot-to-regenerate and the bumped-but-stale states.
 - A breaking change to a consumed field additionally requires touching the consumer's
   manifest, so producer and consumer move in one reviewed change set.
-- Known limitation: the detector trusts the committed artifacts as the baseline. Someone
-  who hand-edits an artifact *and* the matching version in code can fake continuity —
-  visible in review, invisible to the tool. The git-baseline extension above closes this
-  if it ever matters.
+- Known limitation: the detector trusts the committed artifacts as the baseline for
+  *content*. The subjects ledger pins each subject's version floor, so deleting or
+  rewinding an artifact is caught — but someone who hand-edits an artifact's field list
+  while keeping its version (and the matching version in code) can still fake content
+  continuity — visible in review, invisible to the tool. The git-baseline extension above
+  closes this if it ever matters.
 - Constraint details below the type level (regex patterns, `min_length`) are not part of
   the contract surface yet; narrowing the currency pattern would not be flagged. Adding
   constraint capture is a format-version bump (`contract_format: 2`).

@@ -7,6 +7,7 @@ import pytest
 
 from open_banking_pipeline.contracts.cli import main
 from open_banking_pipeline.contracts.generate import generate_all_contracts
+from open_banking_pipeline.contracts.ledger import LEDGER_FILENAME, load_ledger
 from open_banking_pipeline.contracts.model import parse_contract
 
 CHECK_OK = 0
@@ -23,6 +24,15 @@ def load_artifact(directory: Path, subject: str) -> dict:
 
 def dump_artifact(directory: Path, subject: str, payload: dict) -> None:
     (directory / f"{subject}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def rewind_ledger(directory: Path, subject: str, version: str) -> None:
+    """Make the ledger record ``version`` as the subject's history, as a real
+    baseline at that version would have."""
+    ledger_path = directory / LEDGER_FILENAME
+    ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+    ledger[subject] = version
+    ledger_path.write_text(json.dumps(ledger), encoding="utf-8")
 
 
 def write_categorizer_manifest(directory: Path, acknowledged_version: str) -> None:
@@ -53,7 +63,9 @@ class TestGenerate:
 
         artifact_names = sorted(path.name for path in contracts_dir.glob("*.json"))
 
-        assert artifact_names == sorted(f"{subject}.json" for subject in derived)
+        assert artifact_names == sorted(
+            [f"{subject}.json" for subject in derived] + [LEDGER_FILENAME]
+        )
         for subject, contract in derived.items():
             artifact_text = (contracts_dir / f"{subject}.json").read_text(encoding="utf-8")
             assert parse_contract(artifact_text) == contract
@@ -110,6 +122,7 @@ class TestCheckExitCodes:
             {"name": "legacy_flag", "type": "boolean", "nullable": False, "required": True}
         )
         dump_artifact(contracts_dir, "canonical_transaction", artifact)
+        rewind_ledger(contracts_dir, "canonical_transaction", "0.9.0")
 
         assert main(["check", "--contracts-dir", str(contracts_dir)]) == CHECK_OK
 
@@ -154,6 +167,7 @@ class TestRequireFresh:
             {"name": "legacy_flag", "type": "boolean", "nullable": False, "required": True}
         )
         dump_artifact(contracts_dir, "canonical_transaction", artifact)
+        rewind_ledger(contracts_dir, "canonical_transaction", "0.9.0")
 
         assert main(["check", "--contracts-dir", str(contracts_dir)]) == CHECK_OK
         exit_code = main(["check", "--require-fresh", "--contracts-dir", str(contracts_dir)])
@@ -168,6 +182,7 @@ class TestConsumerEnforcement:
             if field["name"] == "amount":
                 field["type"] = "string"
         dump_artifact(contracts_dir, "canonical_transaction", artifact)
+        rewind_ledger(contracts_dir, "canonical_transaction", "0.9.0")
 
     def test_breaking_change_to_consumed_field_fails_despite_major_bump(
         self, contracts_dir: Path, capsys: pytest.CaptureFixture[str]
@@ -237,6 +252,72 @@ class TestDuplicateSubjects:
         self.shadow_artifact(contracts_dir)
 
         assert main(["generate", "--contracts-dir", str(contracts_dir)]) == CHECK_FAILED
+
+
+class TestLedgerEnforcement:
+    def test_generate_records_every_subject_version_in_the_ledger(
+        self, contracts_dir: Path
+    ) -> None:
+        derived = generate_all_contracts()
+
+        assert load_ledger(contracts_dir) == {
+            subject: contract.version for subject, contract in derived.items()
+        }
+
+    def test_check_fails_when_a_recorded_artifact_vanishes(
+        self, contracts_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        (contracts_dir / "canonical_transaction.json").unlink()
+
+        exit_code = main(["check", "--contracts-dir", str(contracts_dir)])
+
+        assert exit_code == CHECK_FAILED
+        assert "never vanish" in capsys.readouterr().out
+
+    def test_deleting_an_artifact_cannot_reset_the_baseline(self, contracts_dir: Path) -> None:
+        baseline = load_artifact(contracts_dir, "canonical_transaction")
+        baseline["fields"].append(
+            {"name": "legacy_flag", "type": "boolean", "nullable": False, "required": True}
+        )
+        dump_artifact(contracts_dir, "canonical_transaction", baseline)
+        assert main(["check", "--contracts-dir", str(contracts_dir)]) == CHECK_FAILED
+
+        (contracts_dir / "canonical_transaction.json").unlink()
+
+        assert main(["generate", "--contracts-dir", str(contracts_dir)]) == CHECK_FAILED
+        exit_code = main(["check", "--require-fresh", "--contracts-dir", str(contracts_dir)])
+        assert exit_code == CHECK_FAILED
+
+    def test_check_fails_when_the_ledger_is_missing(
+        self, contracts_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        (contracts_dir / LEDGER_FILENAME).unlink()
+
+        exit_code = main(["check", "--contracts-dir", str(contracts_dir)])
+
+        assert exit_code == CHECK_FAILED
+        assert "ledger is missing" in capsys.readouterr().out
+
+    def test_generate_restores_a_missing_ledger(self, contracts_dir: Path) -> None:
+        (contracts_dir / LEDGER_FILENAME).unlink()
+
+        assert main(["generate", "--contracts-dir", str(contracts_dir)]) == CHECK_OK
+        assert main(["check", "--contracts-dir", str(contracts_dir)]) == CHECK_OK
+
+    def test_rewound_artifact_version_fails_even_with_a_clean_bump_story(
+        self, contracts_dir: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        artifact = load_artifact(contracts_dir, "canonical_transaction")
+        artifact["version"] = "0.9.0"
+        artifact["fields"].append(
+            {"name": "legacy_flag", "type": "boolean", "nullable": False, "required": True}
+        )
+        dump_artifact(contracts_dir, "canonical_transaction", artifact)
+
+        exit_code = main(["check", "--contracts-dir", str(contracts_dir)])
+
+        assert exit_code == CHECK_FAILED
+        assert "behind" in capsys.readouterr().out
 
 
 class TestRepositoryContracts:
