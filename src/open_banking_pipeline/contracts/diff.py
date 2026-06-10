@@ -37,6 +37,7 @@ class ChangeType(StrEnum):
     OPTIONAL_FIELD_ADDED = "optional_field_added"
     ENUM_VALUE_ADDED = "enum_value_added"
     FIELD_BECAME_OPTIONAL = "field_became_optional"
+    FIELDS_REORDERED = "fields_reordered"
     DOC_CHANGED = "doc_changed"
 
 
@@ -54,6 +55,7 @@ CHANGE_CATEGORIES: dict[ChangeType, ChangeCategory] = {
     ChangeType.OPTIONAL_FIELD_ADDED: ChangeCategory.NON_BREAKING,
     ChangeType.ENUM_VALUE_ADDED: ChangeCategory.NON_BREAKING,
     ChangeType.FIELD_BECAME_OPTIONAL: ChangeCategory.NON_BREAKING,
+    ChangeType.FIELDS_REORDERED: ChangeCategory.NON_BREAKING,
     ChangeType.DOC_CHANGED: ChangeCategory.DOCUMENTATION,
 }
 
@@ -104,7 +106,33 @@ def diff_contracts(old: Contract, new: Contract) -> list[ContractChange]:
     for name, new_field in new_fields.items():
         if name not in old_fields:
             changes.append(_field_added_change(old.subject, new_field))
+    changes.extend(_reordering_changes(old.subject, old_fields, new_fields))
     return changes
+
+
+def _reordering_changes(
+    subject: str,
+    old_fields: dict[str, FieldContract],
+    new_fields: dict[str, FieldContract],
+) -> list[ContractChange]:
+    old_order = [name for name in old_fields if name in new_fields]
+    new_order = [name for name in new_fields if name in old_fields]
+    if old_order == new_order:
+        return []
+    first_moved = next(
+        old_name
+        for old_name, new_name in zip(old_order, new_order, strict=True)
+        if old_name != new_name
+    )
+    return [
+        ContractChange(
+            subject,
+            ChangeType.FIELDS_REORDERED,
+            first_moved,
+            "field order changed; named access is unaffected but the physical "
+            "column order of the deployed shape moved",
+        )
+    ]
 
 
 def _field_added_change(subject: str, field: FieldContract) -> ContractChange:

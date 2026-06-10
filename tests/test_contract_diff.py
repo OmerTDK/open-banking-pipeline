@@ -220,6 +220,29 @@ class TestNonBreakingChanges:
         assert change.change_type is ChangeType.FIELD_BECAME_OPTIONAL
         assert change.category is ChangeCategory.NON_BREAKING
 
+    def test_reordered_fields_are_a_non_breaking_change(self) -> None:
+        old = make_contract(make_field("amount"), make_field("currency", type="string"))
+        new = make_contract(make_field("currency", type="string"), make_field("amount"))
+
+        change = single_change(old, new)
+
+        assert change.change_type is ChangeType.FIELDS_REORDERED
+        assert change.category is ChangeCategory.NON_BREAKING
+        assert required_bump([change]) is BumpLevel.MINOR
+
+    def test_added_or_removed_fields_are_not_reported_as_reordering(self) -> None:
+        old = make_contract(make_field("amount"), make_field("currency", type="string"))
+        new = make_contract(
+            make_field("amount"),
+            make_field("note", type="string", nullable=True, required=False),
+            make_field("currency", type="string"),
+        )
+
+        change_types = {change.change_type for change in diff_contracts(old, new)}
+
+        assert ChangeType.FIELDS_REORDERED not in change_types
+        assert change_types == {ChangeType.OPTIONAL_FIELD_ADDED}
+
 
 class TestDocumentationChanges:
     def test_doc_change_is_documentation_level(self) -> None:

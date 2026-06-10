@@ -64,6 +64,7 @@ cases conservatively:
 | New optional field (nullable or defaulted) | non-breaking |
 | Enum value added | non-breaking — consumers are obliged to tolerate unknown values |
 | Required field became optional | non-breaking |
+| Fields reordered (same field set) | non-breaking — named access is unaffected, but the physical column order of the deployed shape changes, so it must ship under a bump |
 | Semantic-note (doc) change | documentation |
 
 Version rules are semver-ish, enforced per subject against `versions.py` (the declared
