@@ -129,12 +129,25 @@ class CanonicalAccount(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    account_id: str
-    source_bank: SourceBank
-    source_account_id: str = Field(min_length=1)
-    display_name: str = Field(min_length=1)
-    currency: str = Field(pattern=ISO_4217_PATTERN)
-    iban: str | None = None
+    account_id: str = Field(
+        description=(
+            "Canonical account key, '{source_bank}:{source_account_id}'; recomputed "
+            "and enforced by a model validator"
+        )
+    )
+    source_bank: SourceBank = Field(description="Which bank the account came from")
+    source_account_id: str = Field(
+        min_length=1, description="The bank's own account identifier, verbatim"
+    )
+    display_name: str = Field(
+        min_length=1, description="Human-readable account name as reported by the bank"
+    )
+    currency: str = Field(
+        pattern=ISO_4217_PATTERN, description="ISO 4217 code of the account currency"
+    )
+    iban: str | None = Field(
+        default=None, description="IBAN when the bank reports one; legacy exports may not"
+    )
 
     @field_validator("source_account_id")
     @classmethod
@@ -162,21 +175,57 @@ class CanonicalTransaction(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    transaction_id: str
-    account_id: str
-    source_bank: SourceBank
-    source_account_id: str = Field(min_length=1)
-    source_transaction_id: str = Field(min_length=1)
-    status: TransactionStatus
-    booking_date: date | None = None
-    value_date: date | None = None
-    amount: Decimal
-    currency: str = Field(pattern=ISO_4217_PATTERN)
-    counterparty_name: str | None = None
-    counterparty_account: str | None = None
-    description: str | None = None
-    raw_category: str | None = None
-    category: TransactionCategory = TransactionCategory.UNCATEGORIZED
+    transaction_id: str = Field(
+        description=(
+            "Idempotency key: SHA-256 hex of source bank, account id and transaction id; "
+            "recomputed and enforced by a model validator"
+        )
+    )
+    account_id: str = Field(
+        description="Canonical key of the owning account, '{source_bank}:{source_account_id}'"
+    )
+    source_bank: SourceBank = Field(description="Which bank the transaction came from")
+    source_account_id: str = Field(
+        min_length=1, description="The bank's own account identifier, verbatim"
+    )
+    source_transaction_id: str = Field(
+        min_length=1,
+        description=(
+            "The bank's own transaction identifier; content-derived for sources "
+            "without stable ids (ADR-0001)"
+        ),
+    )
+    status: TransactionStatus = Field(
+        description="Lifecycle state; booked rows must carry a booking_date"
+    )
+    booking_date: date | None = Field(
+        default=None, description="Date the bank booked the transaction; required when booked"
+    )
+    value_date: date | None = Field(
+        default=None, description="Date the amount affects the balance, when reported"
+    )
+    amount: Decimal = Field(
+        description=(
+            "Signed amount in the account currency; negative is an outflow, zero is rejected"
+        )
+    )
+    currency: str = Field(
+        pattern=ISO_4217_PATTERN, description="ISO 4217 code of the account currency"
+    )
+    counterparty_name: str | None = Field(
+        default=None, description="Counterparty display name, when the source provides one"
+    )
+    counterparty_account: str | None = Field(
+        default=None, description="Counterparty account identifier, when the source provides one"
+    )
+    description: str | None = Field(default=None, description="Free-text remittance information")
+    raw_category: str | None = Field(
+        default=None, description="The bank's category label verbatim; categorizer lineage"
+    )
+    category: TransactionCategory = Field(
+        default=TransactionCategory.UNCATEGORIZED,
+        description="Normalized spend category; uncategorized until the categorizer assigns one",
+    )
 
     @field_validator("source_account_id")
     @classmethod

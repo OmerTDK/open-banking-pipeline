@@ -1,0 +1,66 @@
+{
+  "contract_format": 1,
+  "fields": [
+    {
+      "doc": "Canonical account key, '{source_bank}:{source_account_id}'; recomputed and enforced by a model validator",
+      "enum_values": null,
+      "name": "account_id",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Which bank the account came from",
+      "enum_values": [
+        "fjellvik",
+        "marlstone",
+        "taktwerk"
+      ],
+      "name": "source_bank",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "The bank's own account identifier, verbatim",
+      "enum_values": null,
+      "name": "source_account_id",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "Human-readable account name as reported by the bank",
+      "enum_values": null,
+      "name": "display_name",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "ISO 4217 code of the account currency",
+      "enum_values": null,
+      "name": "currency",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "string"
+    },
+    {
+      "doc": "IBAN when the bank reports one; legacy exports may not",
+      "enum_values": null,
+      "name": "iban",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "string"
+    }
+  ],
+  "source": "pydantic:open_banking_pipeline.canonical.CanonicalAccount",
+  "subject": "canonical_account",
+  "version": "1.0.0"
+}

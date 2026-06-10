@@ -10,70 +10,71 @@ not a guess.
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from types import TracebackType
-from typing import Self
+from typing import NamedTuple, Self
 
 import duckdb
 
 from open_banking_pipeline.canonical import CanonicalAccount, CanonicalTransaction
 
-ACCOUNT_COLUMNS = (
-    "account_id",
-    "source_bank",
-    "source_account_id",
-    "display_name",
-    "currency",
-    "iban",
-)
-TRANSACTION_COLUMNS = (
-    "transaction_id",
-    "account_id",
-    "source_bank",
-    "source_account_id",
-    "source_transaction_id",
-    "status",
-    "booking_date",
-    "value_date",
-    "amount",
-    "currency",
-    "counterparty_name",
-    "counterparty_account",
-    "description",
-    "raw_category",
-    "category",
-)
-
-CREATE_ACCOUNTS_TABLE = """
-CREATE TABLE IF NOT EXISTS accounts (
-    account_id VARCHAR PRIMARY KEY,
-    source_bank VARCHAR NOT NULL,
-    source_account_id VARCHAR NOT NULL,
-    display_name VARCHAR NOT NULL,
-    currency VARCHAR NOT NULL,
-    iban VARCHAR
-)
-"""
 AMOUNT_PRECISION = 18
 AMOUNT_SCALE = 4
+AMOUNT_SQL_TYPE = f"DECIMAL({AMOUNT_PRECISION}, {AMOUNT_SCALE})"
 
-CREATE_TRANSACTIONS_TABLE = f"""
-CREATE TABLE IF NOT EXISTS transactions (
-    transaction_id VARCHAR PRIMARY KEY,
-    account_id VARCHAR NOT NULL,
-    source_bank VARCHAR NOT NULL,
-    source_account_id VARCHAR NOT NULL,
-    source_transaction_id VARCHAR NOT NULL,
-    status VARCHAR NOT NULL,
-    booking_date DATE,
-    value_date DATE,
-    amount DECIMAL({AMOUNT_PRECISION}, {AMOUNT_SCALE}) NOT NULL,
-    currency VARCHAR NOT NULL,
-    counterparty_name VARCHAR,
-    counterparty_account VARCHAR,
-    description VARCHAR,
-    raw_category VARCHAR,
-    category VARCHAR NOT NULL
+
+class LandingColumn(NamedTuple):
+    """One column of a landing table; the DDL and the data contract derive from it."""
+
+    name: str
+    sql_type: str
+    is_nullable: bool
+    is_primary_key: bool = False
+
+
+ACCOUNTS_LANDING_COLUMNS = (
+    LandingColumn("account_id", "VARCHAR", is_nullable=False, is_primary_key=True),
+    LandingColumn("source_bank", "VARCHAR", is_nullable=False),
+    LandingColumn("source_account_id", "VARCHAR", is_nullable=False),
+    LandingColumn("display_name", "VARCHAR", is_nullable=False),
+    LandingColumn("currency", "VARCHAR", is_nullable=False),
+    LandingColumn("iban", "VARCHAR", is_nullable=True),
 )
-"""
+TRANSACTIONS_LANDING_COLUMNS = (
+    LandingColumn("transaction_id", "VARCHAR", is_nullable=False, is_primary_key=True),
+    LandingColumn("account_id", "VARCHAR", is_nullable=False),
+    LandingColumn("source_bank", "VARCHAR", is_nullable=False),
+    LandingColumn("source_account_id", "VARCHAR", is_nullable=False),
+    LandingColumn("source_transaction_id", "VARCHAR", is_nullable=False),
+    LandingColumn("status", "VARCHAR", is_nullable=False),
+    LandingColumn("booking_date", "DATE", is_nullable=True),
+    LandingColumn("value_date", "DATE", is_nullable=True),
+    LandingColumn("amount", AMOUNT_SQL_TYPE, is_nullable=False),
+    LandingColumn("currency", "VARCHAR", is_nullable=False),
+    LandingColumn("counterparty_name", "VARCHAR", is_nullable=True),
+    LandingColumn("counterparty_account", "VARCHAR", is_nullable=True),
+    LandingColumn("description", "VARCHAR", is_nullable=True),
+    LandingColumn("raw_category", "VARCHAR", is_nullable=True),
+    LandingColumn("category", "VARCHAR", is_nullable=False),
+)
+
+ACCOUNT_COLUMNS = tuple(column.name for column in ACCOUNTS_LANDING_COLUMNS)
+TRANSACTION_COLUMNS = tuple(column.name for column in TRANSACTIONS_LANDING_COLUMNS)
+
+
+def _column_clause(column: LandingColumn) -> str:
+    if column.is_primary_key:
+        return f"{column.name} {column.sql_type} PRIMARY KEY"
+    if column.is_nullable:
+        return f"{column.name} {column.sql_type}"
+    return f"{column.name} {column.sql_type} NOT NULL"
+
+
+def _create_table_statement(table_name: str, columns: tuple[LandingColumn, ...]) -> str:
+    clauses = ",\n    ".join(_column_clause(column) for column in columns)
+    return f"CREATE TABLE IF NOT EXISTS {table_name} (\n    {clauses}\n)"
+
+
+CREATE_ACCOUNTS_TABLE = _create_table_statement("accounts", ACCOUNTS_LANDING_COLUMNS)
+CREATE_TRANSACTIONS_TABLE = _create_table_statement("transactions", TRANSACTIONS_LANDING_COLUMNS)
 
 
 class LandingConflictError(Exception):

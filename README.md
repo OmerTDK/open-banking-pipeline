@@ -6,7 +6,9 @@ Multi-bank PSD2-style ingestion into a canonical, categorized transaction schema
 
 Phase 0 done: canonical pydantic v2 schema with deterministic idempotency keys, fixture sets for three divergent mock banks (PSD2-style JSON, FDX-style JSON, legacy CSV), 71 passing tests, ADR-0001.
 
-Phase 1 done: three in-process mock bank APIs (page-link, cursor, and whole-file-download shapes) with seeded 429/truncation fault injection, per-bank adapters into the canonical schema, retry with backoff, and an idempotent DuckDB landing store — `make ingest` lands all 46 fixture transactions, a second run lands zero duplicates; 166 passing tests, ADR-0003.
+Phase 1 done: three in-process mock bank APIs (page-link, cursor, and whole-file-download shapes) with seeded 429/truncation fault injection, per-bank adapters into the canonical schema, retry with backoff, and an idempotent DuckDB landing store — `make ingest` lands all 46 fixture transactions, a second run lands zero duplicates; 175 passing tests, ADR-0003.
+
+Phase 2 done: code-derived data contracts for 4 subjects (42 fields, primary keys, enum value sets, semantic notes) committed under `contracts/` with an append-only subjects ledger anchoring the baseline, a breaking-change detector classifying 15 change types with semver-ish bump enforcement plus a consumer manifest veto, gating every PR via `make contracts-check` in ~0.1 s; 295 passing tests, ADR-0004.
 
 ## Why this exists
 

@@ -1,0 +1,143 @@
+{
+  "contract_format": 1,
+  "fields": [
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "transaction_id",
+      "nullable": false,
+      "primary_key": true,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "account_id",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "source_bank",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "source_account_id",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "source_transaction_id",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "status",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "booking_date",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "date"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "value_date",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "date"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "amount",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "decimal(18, 4)"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "currency",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "counterparty_name",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "counterparty_account",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "description",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "raw_category",
+      "nullable": true,
+      "primary_key": false,
+      "required": false,
+      "type": "varchar"
+    },
+    {
+      "doc": null,
+      "enum_values": null,
+      "name": "category",
+      "nullable": false,
+      "primary_key": false,
+      "required": true,
+      "type": "varchar"
+    }
+  ],
+  "source": "duckdb-ddl:open_banking_pipeline.ingestion.landing.transactions",
+  "subject": "landing_transactions",
+  "version": "1.0.0"
+}
