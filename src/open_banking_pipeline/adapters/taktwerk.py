@@ -49,7 +49,7 @@ LEGACY_AMOUNT_PATTERN = re.compile(r"^-?\d{1,3}(\.\d{3})*,\d{2}$")
 
 def extract(bank: TaktwerkMockBank, retry_policy: RetryPolicy) -> BankExtract:
     """Pull every taktwerk account and transaction into canonical models."""
-    accounts = parse_accounts_csv(bank.download_accounts_csv())
+    accounts = fetch_with_retry(partial(_download_and_parse_accounts, bank), retry_policy)
     fetch_and_parse = partial(_download_and_parse_transactions, bank, accounts)
     transactions = fetch_with_retry(fetch_and_parse, retry_policy)
     return BankExtract(accounts=accounts, transactions=transactions)
@@ -82,6 +82,10 @@ def parse_legacy_amount(raw_amount: str) -> Decimal:
     if not LEGACY_AMOUNT_PATTERN.fullmatch(raw_amount):
         raise ValueError(f"unparseable taktwerk amount: {raw_amount!r}")
     return Decimal(raw_amount.replace(".", "").replace(",", "."))
+
+
+def _download_and_parse_accounts(bank: TaktwerkMockBank) -> tuple[CanonicalAccount, ...]:
+    return parse_accounts_csv(bank.download_accounts_csv())
 
 
 def _download_and_parse_transactions(

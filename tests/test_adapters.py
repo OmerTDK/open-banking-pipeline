@@ -48,6 +48,21 @@ def sleep_immediately(_seconds: float) -> None:
     """No-op sleeper keeping retry-exercising tests instant."""
 
 
+class AccountsTruncatingTaktwerkBank(TaktwerkMockBank):
+    """Truncates the first accounts download, mirroring the transactions failure shape."""
+
+    def __init__(self, fixtures_dir: Path) -> None:
+        super().__init__(fixtures_dir)
+        self._accounts_download_count = 0
+
+    def download_accounts_csv(self) -> str:
+        full_text = super().download_accounts_csv()
+        self._accounts_download_count += 1
+        if self._accounts_download_count == 1:
+            return full_text[:-1]
+        return full_text
+
+
 NO_SLEEP_POLICY = RetryPolicy(sleep=sleep_immediately)
 
 
@@ -325,6 +340,14 @@ class TestTaktwerkAdapter:
 
         extract = taktwerk_adapter.extract(bank, NO_SLEEP_POLICY)
 
+        assert len(extract.transactions) == TAKTWERK_TRANSACTION_COUNT
+
+    def test_truncated_accounts_download_is_detected_and_retried(self) -> None:
+        bank = AccountsTruncatingTaktwerkBank(FIXTURES_DIR)
+
+        extract = taktwerk_adapter.extract(bank, NO_SLEEP_POLICY)
+
+        assert len(extract.accounts) == ACCOUNTS_PER_BANK
         assert len(extract.transactions) == TAKTWERK_TRANSACTION_COUNT
 
     def test_export_missing_only_the_final_newline_is_detected_as_truncated(
