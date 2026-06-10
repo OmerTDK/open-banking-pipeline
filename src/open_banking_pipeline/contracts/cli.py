@@ -11,6 +11,7 @@ changes are incompatible — bump the version in ``versions.py`` first.
 """
 
 import argparse
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -69,47 +70,99 @@ def main(argv: list[str] | None = None) -> int:
 def assess_contracts(derived: dict[str, Contract], contracts_dir: Path) -> Assessment:
     """Diff the code-derived contracts against the committed artifacts and manifests."""
     committed = _load_committed_contracts(contracts_dir)
-    changes: list[ContractChange] = []
-    notices = []
-    problems = []
-    stale_subjects = []
-    missing_subjects = []
-    format_drift_subjects = []
-
-    for subject in sorted(set(committed) - set(derived)):
-        problems.append(
-            f"{subject}: a committed contract exists but the subject is gone from code; "
-            f"removing a subject breaks every consumer"
-        )
-    for subject, new_contract in sorted(derived.items()):
-        committed_entry = committed.get(subject)
-        if committed_entry is None:
-            notices.append(f"{subject}: new contract at version {new_contract.version}")
-            missing_subjects.append(subject)
-            continue
-        old_contract, committed_text = committed_entry
-        subject_changes = diff_contracts(old_contract, new_contract)
-        changes.extend(subject_changes)
-        problems.extend(
-            f"{subject}: {problem}"
-            for problem in version_change_problems(
-                old_contract.version, new_contract.version, required_bump(subject_changes)
-            )
-        )
-        if serialize_contract(new_contract) != committed_text:
-            stale_subjects.append(subject)
-            if not subject_changes and old_contract.version == new_contract.version:
-                format_drift_subjects.append(subject)
-
-    manifests = load_consumer_manifests(contracts_dir / CONSUMERS_SUBDIRECTORY)
-    for manifest in manifests:
-        problems.extend(manifest_problems(manifest, derived))
-    new_versions = {subject: contract.version for subject, contract in derived.items()}
-    problems.extend(consumer_veto_problems(changes, manifests, new_versions))
-
-    return Assessment(
-        changes, notices, problems, stale_subjects, missing_subjects, format_drift_subjects
+    drift = _merge_assessments(
+        _assess_subject(subject, new_contract, committed.get(subject))
+        for subject, new_contract in sorted(derived.items())
     )
+    problems = [
+        *_removed_subject_problems(derived, committed),
+        *drift.compatibility_problems,
+        *_consumer_problems(derived, drift.changes, contracts_dir),
+    ]
+    return Assessment(
+        drift.changes,
+        drift.notices,
+        problems,
+        drift.stale_subjects,
+        drift.missing_subjects,
+        drift.format_drift_subjects,
+    )
+
+
+def _assess_subject(
+    subject: str,
+    new_contract: Contract,
+    committed_entry: tuple[Contract, str] | None,
+) -> Assessment:
+    if committed_entry is None:
+        return Assessment(
+            changes=[],
+            notices=[f"{subject}: new contract at version {new_contract.version}"],
+            compatibility_problems=[],
+            stale_subjects=[],
+            missing_subjects=[subject],
+            format_drift_subjects=[],
+        )
+    old_contract, committed_text = committed_entry
+    changes = diff_contracts(old_contract, new_contract)
+    problems = [
+        f"{subject}: {problem}"
+        for problem in version_change_problems(
+            old_contract.version, new_contract.version, required_bump(changes)
+        )
+    ]
+    is_stale = serialize_contract(new_contract) != committed_text
+    is_format_drift = is_stale and not changes and old_contract.version == new_contract.version
+    return Assessment(
+        changes=changes,
+        notices=[],
+        compatibility_problems=problems,
+        stale_subjects=[subject] if is_stale else [],
+        missing_subjects=[],
+        format_drift_subjects=[subject] if is_format_drift else [],
+    )
+
+
+def _merge_assessments(assessments: Iterable[Assessment]) -> Assessment:
+    merged = list(assessments)
+    return Assessment(
+        changes=[change for assessment in merged for change in assessment.changes],
+        notices=[notice for assessment in merged for notice in assessment.notices],
+        compatibility_problems=[
+            problem for assessment in merged for problem in assessment.compatibility_problems
+        ],
+        stale_subjects=[subject for assessment in merged for subject in assessment.stale_subjects],
+        missing_subjects=[
+            subject for assessment in merged for subject in assessment.missing_subjects
+        ],
+        format_drift_subjects=[
+            subject for assessment in merged for subject in assessment.format_drift_subjects
+        ],
+    )
+
+
+def _removed_subject_problems(
+    derived: dict[str, Contract],
+    committed: dict[str, tuple[Contract, str]],
+) -> list[str]:
+    return [
+        f"{subject}: a committed contract exists but the subject is gone from code; "
+        f"removing a subject breaks every consumer"
+        for subject in sorted(set(committed) - set(derived))
+    ]
+
+
+def _consumer_problems(
+    derived: dict[str, Contract],
+    changes: list[ContractChange],
+    contracts_dir: Path,
+) -> list[str]:
+    manifests = load_consumer_manifests(contracts_dir / CONSUMERS_SUBDIRECTORY)
+    problems = [
+        problem for manifest in manifests for problem in manifest_problems(manifest, derived)
+    ]
+    new_versions = {subject: contract.version for subject, contract in derived.items()}
+    return [*problems, *consumer_veto_problems(changes, manifests, new_versions)]
 
 
 def _check(assessment: Assessment, require_fresh: bool) -> int:
