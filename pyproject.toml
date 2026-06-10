@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Multi-bank PSD2-style ingestion into a canonical, categorized transaction schema with data contracts"
 requires-python = ">=3.12"
 dependencies = [
+    "duckdb>=1.5.3",
     "pydantic>=2.13.4",
 ]
 
