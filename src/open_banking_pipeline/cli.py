@@ -27,6 +27,8 @@ FJELLVIK_PLANNED_REQUEST_COUNT = 6
 FJELLVIK_PLANNED_FAILURE_COUNT = 2
 TAKTWERK_PLANNED_REQUEST_COUNT = 1
 TAKTWERK_PLANNED_FAILURE_COUNT = 1
+# Offsetting taktwerk's seed decorrelates its failure schedule from fjellvik's.
+TAKTWERK_FAILURE_SEED_OFFSET = 1
 
 BANK_NAME_COLUMN_WIDTH = 10
 
@@ -95,7 +97,9 @@ def _planned_failures(
         failure_seed, FJELLVIK_PLANNED_REQUEST_COUNT, FJELLVIK_PLANNED_FAILURE_COUNT
     )
     taktwerk_failures = PlannedFailures.from_seed(
-        failure_seed + 1, TAKTWERK_PLANNED_REQUEST_COUNT, TAKTWERK_PLANNED_FAILURE_COUNT
+        failure_seed + TAKTWERK_FAILURE_SEED_OFFSET,
+        TAKTWERK_PLANNED_REQUEST_COUNT,
+        TAKTWERK_PLANNED_FAILURE_COUNT,
     )
     return fjellvik_failures, taktwerk_failures
 
