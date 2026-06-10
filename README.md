@@ -8,6 +8,8 @@ Phase 0 done: canonical pydantic v2 schema with deterministic idempotency keys, 
 
 Phase 1 done: three in-process mock bank APIs (page-link, cursor, and whole-file-download shapes) with seeded 429/truncation fault injection, per-bank adapters into the canonical schema, retry with backoff, and an idempotent DuckDB landing store — `make ingest` lands all 46 fixture transactions, a second run lands zero duplicates; 166 passing tests, ADR-0003.
 
+Phase 2 done: code-derived data contracts for 4 subjects (42 fields, enum value sets, semantic notes) committed under `contracts/`, a breaking-change detector classifying 12 change types with semver-ish bump enforcement plus a consumer manifest veto, gating every PR via `make contracts-check` in ~0.1 s; 261 passing tests, ADR-0004.
+
 ## Why this exists
 
 <!-- System narrative: the problem, why it is interesting, what it demonstrates. -->
