@@ -50,15 +50,21 @@ def single_change(old: Contract, new: Contract) -> ContractChange:
 
 
 class TestBreakingChanges:
-    def test_removed_field_is_breaking(self) -> None:
-        old = make_contract(make_field("amount"), make_field("currency", type="string"))
+    @pytest.mark.parametrize(
+        ("nullable", "required"),
+        [(False, True), (False, False), (True, False)],
+        ids=["required", "optional", "nullable-optional"],
+    )
+    def test_removed_field_is_breaking(self, nullable: bool, required: bool) -> None:
+        removed = make_field("note", type="string", nullable=nullable, required=required)
+        old = make_contract(make_field("amount"), removed)
         new = make_contract(make_field("amount"))
 
         change = single_change(old, new)
 
         assert change.change_type is ChangeType.FIELD_REMOVED
         assert change.category is ChangeCategory.BREAKING
-        assert change.field_name == "currency"
+        assert change.field_name == "note"
 
     def test_changed_type_is_breaking(self) -> None:
         old = make_contract(make_field("amount", type="decimal"))
@@ -92,12 +98,12 @@ class TestBreakingChanges:
         assert change.field_name == "currency"
 
     @pytest.mark.parametrize(
-        ("old_nullable", "new_nullable"),
-        [(False, True), (True, False)],
+        ("old_nullable", "new_nullable", "expected_direction"),
+        [(False, True, "nullable"), (True, False, "non-nullable")],
         ids=["widened", "narrowed"],
     )
     def test_nullability_change_is_breaking_in_both_directions(
-        self, old_nullable: bool, new_nullable: bool
+        self, old_nullable: bool, new_nullable: bool, expected_direction: str
     ) -> None:
         old = make_contract(make_field("amount", nullable=old_nullable, required=False))
         new = make_contract(make_field("amount", nullable=new_nullable, required=False))
@@ -106,6 +112,7 @@ class TestBreakingChanges:
 
         assert change.change_type is ChangeType.NULLABILITY_CHANGED
         assert change.category is ChangeCategory.BREAKING
+        assert change.detail == f"field became {expected_direction}"
 
     def test_field_becoming_required_is_breaking(self) -> None:
         old = make_contract(make_field("amount", required=False))
@@ -117,20 +124,25 @@ class TestBreakingChanges:
         assert change.category is ChangeCategory.BREAKING
 
     @pytest.mark.parametrize(
-        ("old_values", "new_values"),
-        [(None, ("booked", "pending")), (("booked", "pending"), None)],
+        ("old_values", "new_values", "expected_change_type"),
+        [
+            (None, ("booked", "pending"), ChangeType.ENUM_CONSTRAINT_ADDED),
+            (("booked", "pending"), None, ChangeType.ENUM_CONSTRAINT_REMOVED),
+        ],
         ids=["constraint-added", "constraint-removed"],
     )
     def test_enum_constraint_appearing_or_disappearing_is_breaking(
         self,
         old_values: tuple[str, ...] | None,
         new_values: tuple[str, ...] | None,
+        expected_change_type: ChangeType,
     ) -> None:
         old = make_contract(make_field("status", type="string", enum_values=old_values))
         new = make_contract(make_field("status", type="string", enum_values=new_values))
 
         change = single_change(old, new)
 
+        assert change.change_type is expected_change_type
         assert change.category is ChangeCategory.BREAKING
 
 
