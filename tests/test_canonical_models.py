@@ -88,6 +88,36 @@ class TestIdempotencyKeyDerivation:
         assert first_account != second_account
 
 
+class TestControlCharacterRejection:
+    def test_derivation_rejects_separator_in_source_account_id(self) -> None:
+        with pytest.raises(ValueError, match="control character"):
+            derive_transaction_id(SourceBank.FJELLVIK, "FV-ACC\x1f001", "TX-1")
+
+    def test_derivation_rejects_separator_in_source_transaction_id(self) -> None:
+        with pytest.raises(ValueError, match="control character"):
+            derive_transaction_id(SourceBank.FJELLVIK, "FV-ACC", "001\x1fTX-1")
+
+    def test_account_derivation_rejects_separator(self) -> None:
+        with pytest.raises(ValueError, match="control character"):
+            derive_account_id(SourceBank.FJELLVIK, "FV-ACC\x1f001")
+
+    def test_account_model_rejects_control_characters_in_source_account_id(self) -> None:
+        with pytest.raises(ValidationError, match="control character"):
+            make_account(source_account_id="FV-ACC\x1f001")
+
+    def test_transaction_model_rejects_control_characters_in_source_account_id(self) -> None:
+        with pytest.raises(ValidationError, match="control character"):
+            make_transaction(source_account_id="FV-ACC\x1f001")
+
+    def test_transaction_model_rejects_control_characters_in_source_transaction_id(self) -> None:
+        with pytest.raises(ValidationError, match="control character"):
+            make_transaction(source_transaction_id="FV-TX\n1001")
+
+    def test_transaction_model_rejects_delete_character(self) -> None:
+        with pytest.raises(ValidationError, match="control character"):
+            make_transaction(source_transaction_id="FV-TX\x7f1001")
+
+
 class TestCanonicalAccount:
     def test_valid_account_constructs(self) -> None:
         account = make_account()

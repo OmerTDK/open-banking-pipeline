@@ -39,8 +39,11 @@ in the adapters, the canonical layer knows nothing about any bank's quirks.
 `CanonicalTransaction` (pydantic v2, `frozen=True`, `extra="forbid"`):
 
 - `transaction_id` — idempotency key: SHA-256 hex of `source_bank`, `source_account_id`,
-  `source_transaction_id` joined by ASCII unit separator (`\x1f`, collision-proof against
-  identifiers containing delimiters). Deterministic, so replayed loads are no-ops.
+  `source_transaction_id` joined by ASCII unit separator (`\x1f`). The join is injective
+  because source identifiers are validated — in the derivation functions and at the model
+  layer — to contain no control characters (the separator included); without that check an
+  identifier containing the separator could shift material between fields and collide with a
+  different record. Deterministic, so replayed loads are no-ops.
 - `account_id` — `{source_bank}:{source_account_id}`; same derivation on
   `CanonicalAccount`, so the FK linkage cannot drift.
 - `source_bank` / `source_account_id` / `source_transaction_id` — full lineage back to the

@@ -6,8 +6,11 @@ Idempotency key derivation (the replay-safety contract for all loads):
   ``SourceBank`` values never contain ``:``.
 - ``transaction_id`` = SHA-256 hex digest of ``source_bank``,
   ``source_account_id`` and ``source_transaction_id`` joined by the ASCII
-  unit separator (``\\x1f``), which cannot appear in bank identifiers and
-  therefore prevents concatenation collisions.
+  unit separator (``\\x1f``). The join is injective because control
+  characters (the separator included) are rejected in source identifiers,
+  both in the derivation functions and at the model layer — without that
+  enforcement, an identifier containing the separator could shift material
+  between fields and collide with a different record.
 
 Both identifiers are regular fields so canonical records survive a
 serialize/re-validate round trip, but model validators recompute the
@@ -58,8 +61,19 @@ class TransactionCategory(StrEnum):
     UNCATEGORIZED = "uncategorized"
 
 
+def reject_control_characters(field_name: str, value: str) -> str:
+    """Reject control characters that would break identifier-derivation injectivity."""
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError(
+            f"{field_name} {value!r} contains a control character; control characters "
+            f"would break the injectivity of the derived identifiers"
+        )
+    return value
+
+
 def derive_account_id(source_bank: SourceBank, source_account_id: str) -> str:
     """Derive the canonical account identifier for a source account."""
+    reject_control_characters("source_account_id", source_account_id)
     return f"{source_bank.value}:{source_account_id}"
 
 
@@ -73,6 +87,8 @@ def derive_transaction_id(
     The same source transaction always derives the same key, so replayed
     loads are no-ops; distinct banks or accounts never collide.
     """
+    reject_control_characters("source_account_id", source_account_id)
+    reject_control_characters("source_transaction_id", source_transaction_id)
     key_material = KEY_SEPARATOR.join([source_bank.value, source_account_id, source_transaction_id])
     return hashlib.sha256(key_material.encode("utf-8")).hexdigest()
 
@@ -88,6 +104,11 @@ class CanonicalAccount(BaseModel):
     display_name: str = Field(min_length=1)
     currency: str = Field(pattern=ISO_4217_PATTERN)
     iban: str | None = None
+
+    @field_validator("source_account_id")
+    @classmethod
+    def reject_control_characters_in_source_account_id(cls, value: str) -> str:
+        return reject_control_characters("source_account_id", value)
 
     @model_validator(mode="after")
     def verify_account_id_derivation(self) -> Self:
@@ -125,6 +146,16 @@ class CanonicalTransaction(BaseModel):
     description: str | None = None
     raw_category: str | None = None
     category: TransactionCategory = TransactionCategory.UNCATEGORIZED
+
+    @field_validator("source_account_id")
+    @classmethod
+    def reject_control_characters_in_source_account_id(cls, value: str) -> str:
+        return reject_control_characters("source_account_id", value)
+
+    @field_validator("source_transaction_id")
+    @classmethod
+    def reject_control_characters_in_source_transaction_id(cls, value: str) -> str:
+        return reject_control_characters("source_transaction_id", value)
 
     @field_validator("amount")
     @classmethod
