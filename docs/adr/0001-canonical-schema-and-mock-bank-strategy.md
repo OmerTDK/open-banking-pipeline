@@ -18,9 +18,9 @@ banks that force real canonicalization work.
 
 | Bank | Style | Divergence it forces |
 | --- | --- | --- |
-| `fjord` | Berlin-Group/PSD2-style JSON | Nested `booked`/`pending` arrays, amounts as **strings** inside a `transactionAmount` object, ISO dates, per-account endpoints |
-| `granite` | FDX-style JSON | Flat camelCase entries, **unsigned numeric** amounts with a `DEBIT`/`CREDIT` indicator, ISO-8601 UTC timestamps, `POSTED`/`PENDING` status, `originalCurrency`/`originalAmount` for FX |
-| `krono` | Legacy CSV export | Semicolon delimiter, `dd.mm.yyyy` dates, decimal-comma amounts with dot thousands separators, no status column (booked-only), localized references |
+| `fjellvik` | Berlin-Group/PSD2-style JSON | Nested `booked`/`pending` arrays, amounts as **strings** inside a `transactionAmount` object, ISO dates, per-account endpoints |
+| `marlstone` | FDX-style JSON | Flat camelCase entries, **unsigned numeric** amounts with a `DEBIT`/`CREDIT` indicator, ISO-8601 UTC timestamps, `POSTED`/`PENDING` status, `originalCurrency`/`originalAmount` for FX |
+| `taktwerk` | Legacy CSV export | Semicolon delimiter, `dd.mm.yyyy` dates, decimal-comma amounts with dot thousands separators, no status column (booked-only), localized references |
 
 All three are served from checked-in fixtures under `fixtures/<bank>/` containing 2 accounts
 and 15–16 transactions each, including the edge cases every adapter must survive: refunds
@@ -51,7 +51,7 @@ in the adapters, the canonical layer knows nothing about any bank's quirks.
   canonical contract because only one of three banks reliably provides them.
 - `amount` — signed `Decimal` in the account currency (negative = outflow); zero is
   rejected as an upstream parsing bug. Adapters resolve each bank's sign convention
-  (granite's unsigned-amount-plus-`DEBIT`/`CREDIT` included).
+  (marlstone's unsigned-amount-plus-`DEBIT`/`CREDIT` included).
 - `currency` — ISO 4217 pattern-validated (`^[A-Z]{3}$`).
 - `counterparty_name` / `counterparty_account` — optional; legacy exports may lack them.
 - `description` — optional free-text remittance information.

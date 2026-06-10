@@ -2,8 +2,8 @@
   "transactions": [
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88001",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88001",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-02T09:14:00Z",
         "transactionTimestamp": "2026-05-01T18:22:00Z",
         "description": "POS PURCHASE - GREENFIELD GROCERS BERLIN",
@@ -15,8 +15,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88002",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88002",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-03T07:02:00Z",
         "transactionTimestamp": "2026-05-02T20:45:00Z",
         "description": "POS PURCHASE - TRATTORIA BEL MARE",
@@ -28,8 +28,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88003",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88003",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-05T06:00:00Z",
         "transactionTimestamp": "2026-05-05T06:00:00Z",
         "description": "DIRECT DEPOSIT - BRIGHTLINE CONSULTING PAYROLL",
@@ -41,8 +41,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88004",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88004",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-06T11:30:00Z",
         "transactionTimestamp": "2026-05-06T11:30:00Z",
         "description": "ACH PAYMENT - LINDENHOF PROPERTY MGMT RENT",
@@ -54,8 +54,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88005",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88005",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-08T14:12:00Z",
         "transactionTimestamp": "2026-05-07T22:51:00Z",
         "description": "CARD PURCHASE - SKYBRIDGE AIRWAYS LISBON",
@@ -69,8 +69,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88006",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88006",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-11T08:40:00Z",
         "transactionTimestamp": "2026-05-11T08:40:00Z",
         "description": "REFUND - NORTHGATE ELECTRONICS ORDER 77120",
@@ -82,8 +82,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88007",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88007",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-13T05:55:00Z",
         "transactionTimestamp": "2026-05-13T05:55:00Z",
         "description": "RECURRING PAYMENT - NIMBUS STREAMING",
@@ -95,11 +95,11 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88008",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88008",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-16T10:05:00Z",
         "transactionTimestamp": "2026-05-16T10:05:00Z",
-        "description": "ATM WITHDRAWAL - GRANITE BANK HAUPTBAHNHOF",
+        "description": "ATM WITHDRAWAL - MARLSTONE BANK HAUPTBAHNHOF",
         "debitCreditMemo": "DEBIT",
         "amount": 150.0,
         "status": "POSTED",
@@ -108,8 +108,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88009",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88009",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-19T09:20:00Z",
         "transactionTimestamp": "2026-05-19T09:20:00Z",
         "description": "BILL PAYMENT - CITYWORKS ENERGY",
@@ -121,8 +121,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88010",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88010",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-22T13:48:00Z",
         "transactionTimestamp": "2026-05-21T19:02:00Z",
         "description": "CARD PURCHASE - PAGETURNER BOOKS LONDON",
@@ -136,8 +136,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88011",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88011",
+        "accountId": "MS-330011",
         "postedTimestamp": "2026-05-28T07:17:00Z",
         "transactionTimestamp": "2026-05-28T07:17:00Z",
         "description": "MONTHLY MAINTENANCE FEE",
@@ -149,8 +149,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88012",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88012",
+        "accountId": "MS-330011",
         "transactionTimestamp": "2026-06-01T16:33:00Z",
         "description": "CARD AUTHORIZATION - CORNER PHARMACY",
         "debitCreditMemo": "DEBIT",
@@ -161,8 +161,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-88013",
-        "accountId": "GR-330011",
+        "transactionId": "MS-TXN-88013",
+        "accountId": "MS-330011",
         "transactionTimestamp": "2026-06-02T08:09:00Z",
         "description": "CARD AUTHORIZATION - METRO TRANSIT WEEKLY PASS",
         "debitCreditMemo": "DEBIT",
@@ -173,11 +173,11 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-99001",
-        "accountId": "GR-440022",
+        "transactionId": "MS-TXN-99001",
+        "accountId": "MS-440022",
         "postedTimestamp": "2026-05-01T06:00:00Z",
         "transactionTimestamp": "2026-05-01T06:00:00Z",
-        "description": "TRANSFER FROM CHECKING GR-330011",
+        "description": "TRANSFER FROM CHECKING MS-330011",
         "debitCreditMemo": "CREDIT",
         "amount": 250.0,
         "status": "POSTED",
@@ -186,11 +186,11 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-99002",
-        "accountId": "GR-440022",
+        "transactionId": "MS-TXN-99002",
+        "accountId": "MS-440022",
         "postedTimestamp": "2026-05-18T06:00:00Z",
         "transactionTimestamp": "2026-05-18T06:00:00Z",
-        "description": "TRANSFER TO CHECKING GR-330011",
+        "description": "TRANSFER TO CHECKING MS-330011",
         "debitCreditMemo": "DEBIT",
         "amount": 100.0,
         "status": "POSTED",
@@ -199,8 +199,8 @@
     },
     {
       "depositTransaction": {
-        "transactionId": "GR-TXN-99003",
-        "accountId": "GR-440022",
+        "transactionId": "MS-TXN-99003",
+        "accountId": "MS-440022",
         "postedTimestamp": "2026-05-31T23:59:00Z",
         "transactionTimestamp": "2026-05-31T23:59:00Z",
         "description": "INTEREST PAYMENT",

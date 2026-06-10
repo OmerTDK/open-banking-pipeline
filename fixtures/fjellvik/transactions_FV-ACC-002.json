@@ -5,7 +5,7 @@
   "transactions": {
     "booked": [
       {
-        "transactionId": "FJ-TX-2001",
+        "transactionId": "FV-TX-2001",
         "bookingDate": "2026-05-01",
         "valueDate": "2026-05-01",
         "transactionAmount": {
@@ -17,7 +17,7 @@
         "bankTransactionCode": "PMNT-ICDT-BOOK"
       },
       {
-        "transactionId": "FJ-TX-2002",
+        "transactionId": "FV-TX-2002",
         "bookingDate": "2026-05-14",
         "valueDate": "2026-05-14",
         "transactionAmount": {
@@ -29,21 +29,21 @@
         "bankTransactionCode": "PMNT-ICDT-BOOK"
       },
       {
-        "transactionId": "FJ-TX-2003",
+        "transactionId": "FV-TX-2003",
         "bookingDate": "2026-05-31",
         "valueDate": "2026-05-31",
         "transactionAmount": {
           "currency": "EUR",
           "amount": "1.84"
         },
-        "debtorName": "Fjord Bank",
+        "debtorName": "Fjellvik Bank",
         "remittanceInformationUnstructured": "Interest credit Q2 2026",
         "bankTransactionCode": "PMNT-RCDT-INTR"
       }
     ],
     "pending": [
       {
-        "transactionId": "FJ-TX-2004",
+        "transactionId": "FV-TX-2004",
         "valueDate": "2026-06-01",
         "transactionAmount": {
           "currency": "EUR",

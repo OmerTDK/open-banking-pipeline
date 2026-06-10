@@ -28,9 +28,9 @@ def build_fields(defaults: dict[str, Any], overrides: dict[str, Any]) -> dict[st
 
 def make_account(**overrides: Any) -> CanonicalAccount:
     defaults: dict[str, Any] = {
-        "source_bank": SourceBank.FJORD,
-        "source_account_id": "FJ-ACC-001",
-        "account_id": derive_account_id(SourceBank.FJORD, "FJ-ACC-001"),
+        "source_bank": SourceBank.FJELLVIK,
+        "source_account_id": "FV-ACC-001",
+        "account_id": derive_account_id(SourceBank.FJELLVIK, "FV-ACC-001"),
         "display_name": "Main Current Account",
         "currency": "EUR",
         "iban": "DE89370400440532013000",
@@ -40,11 +40,11 @@ def make_account(**overrides: Any) -> CanonicalAccount:
 
 def make_transaction(**overrides: Any) -> CanonicalTransaction:
     defaults: dict[str, Any] = {
-        "source_bank": SourceBank.FJORD,
-        "source_account_id": "FJ-ACC-001",
-        "source_transaction_id": "FJ-TX-1001",
-        "account_id": derive_account_id(SourceBank.FJORD, "FJ-ACC-001"),
-        "transaction_id": derive_transaction_id(SourceBank.FJORD, "FJ-ACC-001", "FJ-TX-1001"),
+        "source_bank": SourceBank.FJELLVIK,
+        "source_account_id": "FV-ACC-001",
+        "source_transaction_id": "FV-TX-1001",
+        "account_id": derive_account_id(SourceBank.FJELLVIK, "FV-ACC-001"),
+        "transaction_id": derive_transaction_id(SourceBank.FJELLVIK, "FV-ACC-001", "FV-TX-1001"),
         "status": TransactionStatus.BOOKED,
         "booking_date": date(2026, 5, 2),
         "value_date": date(2026, 5, 3),
@@ -60,30 +60,30 @@ def make_transaction(**overrides: Any) -> CanonicalTransaction:
 
 class TestIdempotencyKeyDerivation:
     def test_derive_account_id_prefixes_source_bank(self) -> None:
-        assert derive_account_id(SourceBank.FJORD, "FJ-ACC-001") == "fjord:FJ-ACC-001"
+        assert derive_account_id(SourceBank.FJELLVIK, "FV-ACC-001") == "fjellvik:FV-ACC-001"
 
     def test_derive_transaction_id_is_documented_sha256(self) -> None:
-        expected = hashlib.sha256(b"fjord\x1fFJ-ACC-001\x1fFJ-TX-1001").hexdigest()
+        expected = hashlib.sha256(b"fjellvik\x1fFV-ACC-001\x1fFV-TX-1001").hexdigest()
 
-        derived = derive_transaction_id(SourceBank.FJORD, "FJ-ACC-001", "FJ-TX-1001")
+        derived = derive_transaction_id(SourceBank.FJELLVIK, "FV-ACC-001", "FV-TX-1001")
 
         assert derived == expected
 
     def test_derive_transaction_id_is_deterministic(self) -> None:
-        first = derive_transaction_id(SourceBank.GRANITE, "GR-330011", "GR-TXN-88001")
-        second = derive_transaction_id(SourceBank.GRANITE, "GR-330011", "GR-TXN-88001")
+        first = derive_transaction_id(SourceBank.MARLSTONE, "MS-330011", "MS-TXN-88001")
+        second = derive_transaction_id(SourceBank.MARLSTONE, "MS-330011", "MS-TXN-88001")
 
         assert first == second
 
     def test_derive_transaction_id_differs_across_banks(self) -> None:
-        fjord_key = derive_transaction_id(SourceBank.FJORD, "ACC-1", "TX-1")
-        granite_key = derive_transaction_id(SourceBank.GRANITE, "ACC-1", "TX-1")
+        fjellvik_key = derive_transaction_id(SourceBank.FJELLVIK, "ACC-1", "TX-1")
+        marlstone_key = derive_transaction_id(SourceBank.MARLSTONE, "ACC-1", "TX-1")
 
-        assert fjord_key != granite_key
+        assert fjellvik_key != marlstone_key
 
     def test_derive_transaction_id_differs_across_accounts(self) -> None:
-        first_account = derive_transaction_id(SourceBank.KRONO, "KR-7701", "TX-1")
-        second_account = derive_transaction_id(SourceBank.KRONO, "KR-7702", "TX-1")
+        first_account = derive_transaction_id(SourceBank.TAKTWERK, "TW-7701", "TX-1")
+        second_account = derive_transaction_id(SourceBank.TAKTWERK, "TW-7702", "TX-1")
 
         assert first_account != second_account
 
@@ -92,12 +92,12 @@ class TestCanonicalAccount:
     def test_valid_account_constructs(self) -> None:
         account = make_account()
 
-        assert account.account_id == "fjord:FJ-ACC-001"
+        assert account.account_id == "fjellvik:FV-ACC-001"
         assert account.currency == "EUR"
 
     def test_account_id_must_match_derivation(self) -> None:
         with pytest.raises(ValidationError, match="account_id"):
-            make_account(account_id="fjord:SOMETHING-ELSE")
+            make_account(account_id="fjellvik:SOMETHING-ELSE")
 
     def test_empty_display_name_rejected(self) -> None:
         with pytest.raises(ValidationError):
@@ -136,7 +136,7 @@ class TestCanonicalTransaction:
 
     def test_account_id_must_match_derivation(self) -> None:
         with pytest.raises(ValidationError, match="account_id"):
-            make_transaction(account_id="fjord:WRONG-ACCOUNT")
+            make_transaction(account_id="fjellvik:WRONG-ACCOUNT")
 
     def test_booked_transaction_requires_booking_date(self) -> None:
         with pytest.raises(ValidationError, match="booking_date"):
@@ -178,7 +178,7 @@ class TestCanonicalTransaction:
         with pytest.raises(ValidationError):
             make_transaction(
                 source_transaction_id="",
-                transaction_id=derive_transaction_id(SourceBank.FJORD, "FJ-ACC-001", ""),
+                transaction_id=derive_transaction_id(SourceBank.FJELLVIK, "FV-ACC-001", ""),
             )
 
     def test_category_defaults_to_uncategorized(self) -> None:

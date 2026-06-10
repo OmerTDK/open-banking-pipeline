@@ -5,7 +5,7 @@
   "transactions": {
     "booked": [
       {
-        "transactionId": "FJ-TX-1001",
+        "transactionId": "FV-TX-1001",
         "bookingDate": "2026-05-02",
         "valueDate": "2026-05-03",
         "transactionAmount": {
@@ -17,7 +17,7 @@
         "bankTransactionCode": "PMNT-CCRD-POSD"
       },
       {
-        "transactionId": "FJ-TX-1002",
+        "transactionId": "FV-TX-1002",
         "bookingDate": "2026-05-04",
         "valueDate": "2026-05-04",
         "transactionAmount": {
@@ -29,7 +29,7 @@
         "bankTransactionCode": "PMNT-CCRD-POSD"
       },
       {
-        "transactionId": "FJ-TX-1003",
+        "transactionId": "FV-TX-1003",
         "bookingDate": "2026-05-05",
         "valueDate": "2026-05-05",
         "transactionAmount": {
@@ -41,7 +41,7 @@
         "bankTransactionCode": "PMNT-RCDT-SALA"
       },
       {
-        "transactionId": "FJ-TX-1004",
+        "transactionId": "FV-TX-1004",
         "bookingDate": "2026-05-06",
         "valueDate": "2026-05-07",
         "transactionAmount": {
@@ -53,7 +53,7 @@
         "bankTransactionCode": "PMNT-ICDT-STDO"
       },
       {
-        "transactionId": "FJ-TX-1005",
+        "transactionId": "FV-TX-1005",
         "bookingDate": "2026-05-09",
         "valueDate": "2026-05-09",
         "transactionAmount": {
@@ -65,7 +65,7 @@
         "bankTransactionCode": "PMNT-CCRD-POSD"
       },
       {
-        "transactionId": "FJ-TX-1006",
+        "transactionId": "FV-TX-1006",
         "bookingDate": "2026-05-12",
         "valueDate": "2026-05-12",
         "transactionAmount": {
@@ -77,7 +77,7 @@
         "bankTransactionCode": "PMNT-RCDT-ESCT"
       },
       {
-        "transactionId": "FJ-TX-1007",
+        "transactionId": "FV-TX-1007",
         "bookingDate": "2026-05-15",
         "valueDate": "2026-05-15",
         "transactionAmount": {
@@ -89,19 +89,19 @@
         "bankTransactionCode": "PMNT-IDDT-ESDD"
       },
       {
-        "transactionId": "FJ-TX-1008",
+        "transactionId": "FV-TX-1008",
         "bookingDate": "2026-05-20",
         "valueDate": "2026-05-20",
         "transactionAmount": {
           "currency": "EUR",
           "amount": "-200.00"
         },
-        "creditorName": "Fjord Bank ATM Bergmannstrasse",
+        "creditorName": "Fjellvik Bank ATM Bergmannstrasse",
         "remittanceInformationUnstructured": "Cash withdrawal",
         "bankTransactionCode": "PMNT-CCRD-CWDL"
       },
       {
-        "transactionId": "FJ-TX-1009",
+        "transactionId": "FV-TX-1009",
         "bookingDate": "2026-05-26",
         "valueDate": "2026-05-27",
         "transactionAmount": {
@@ -115,7 +115,7 @@
     ],
     "pending": [
       {
-        "transactionId": "FJ-TX-1010",
+        "transactionId": "FV-TX-1010",
         "valueDate": "2026-06-01",
         "transactionAmount": {
           "currency": "EUR",
@@ -126,7 +126,7 @@
         "bankTransactionCode": "PMNT-CCRD-POSD"
       },
       {
-        "transactionId": "FJ-TX-1011",
+        "transactionId": "FV-TX-1011",
         "valueDate": "2026-06-02",
         "transactionAmount": {
           "currency": "EUR",

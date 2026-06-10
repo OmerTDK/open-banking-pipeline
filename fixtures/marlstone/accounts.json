@@ -2,7 +2,7 @@
   "accounts": [
     {
       "depositAccount": {
-        "accountId": "GR-330011",
+        "accountId": "MS-330011",
         "accountType": "CHECKING",
         "nickname": "Everyday Checking",
         "status": "OPEN",
@@ -13,7 +13,7 @@
     },
     {
       "depositAccount": {
-        "accountId": "GR-440022",
+        "accountId": "MS-440022",
         "accountType": "SAVINGS",
         "nickname": "Holiday Fund",
         "status": "OPEN",

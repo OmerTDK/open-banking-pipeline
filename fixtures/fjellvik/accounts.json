@@ -1,7 +1,7 @@
 {
   "accounts": [
     {
-      "resourceId": "FJ-ACC-001",
+      "resourceId": "FV-ACC-001",
       "iban": "DE89370400440532013000",
       "currency": "EUR",
       "name": "Main Current Account",
@@ -9,7 +9,7 @@
       "cashAccountType": "CACC"
     },
     {
-      "resourceId": "FJ-ACC-002",
+      "resourceId": "FV-ACC-002",
       "iban": "DE02120300000000202051",
       "currency": "EUR",
       "name": "Rainy Day Savings",

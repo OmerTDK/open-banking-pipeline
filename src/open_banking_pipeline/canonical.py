@@ -29,9 +29,9 @@ ISO_4217_PATTERN = r"^[A-Z]{3}$"
 class SourceBank(StrEnum):
     """The three mock banks, each with a deliberately different API shape."""
 
-    FJORD = "fjord"
-    GRANITE = "granite"
-    KRONO = "krono"
+    FJELLVIK = "fjellvik"
+    MARLSTONE = "marlstone"
+    TAKTWERK = "taktwerk"
 
 
 class TransactionStatus(StrEnum):
