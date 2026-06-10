@@ -6,6 +6,8 @@ the demo; the landed data is byte-identical with or without it.
 """
 
 import argparse
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 from open_banking_pipeline.ingestion.landing import LandingStore
@@ -29,13 +31,21 @@ TAKTWERK_PLANNED_FAILURE_COUNT = 1
 BANK_NAME_COLUMN_WIDTH = 10
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Run one full ingestion; return 0 when every bank landed."""
+def main(
+    argv: list[str] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
+    """Run one full ingestion; return 0 when every bank landed.
+
+    Args:
+        argv: Command-line arguments, or ``None`` for ``sys.argv``.
+        sleep: Wait function for retry backoff; tests inject a no-op.
+    """
     arguments = _parse_arguments(argv)
     fjellvik_failures, taktwerk_failures = _planned_failures(arguments.failure_seed)
     extractors = build_extractors(
         arguments.fixtures_dir,
-        RetryPolicy(),
+        RetryPolicy(sleep=sleep),
         fjellvik_failures=fjellvik_failures,
         taktwerk_failures=taktwerk_failures,
     )

@@ -12,8 +12,12 @@ from open_banking_pipeline.ingestion.runner import BankIngestionResult, Ingestio
 TOTAL_TRANSACTION_COUNT = 46
 
 
+def sleep_immediately(_seconds: float) -> None:
+    """No-op sleeper keeping retry-exercising CLI tests instant."""
+
+
 def run_cli(database_path: Path, *extra_arguments: str) -> int:
-    return main(["--database", str(database_path), *extra_arguments])
+    return main(["--database", str(database_path), *extra_arguments], sleep=sleep_immediately)
 
 
 class TestCliIngestion:
@@ -54,6 +58,17 @@ class TestCliIngestion:
         assert exit_code == 0
         with LandingStore.open(database_path) as store:
             assert store.count_transactions() == TOTAL_TRANSACTION_COUNT
+
+    def test_retry_waits_use_the_injected_sleep(self, tmp_path: Path) -> None:
+        sleep_calls: list[float] = []
+
+        exit_code = main(
+            ["--database", str(tmp_path / "landing.duckdb"), "--failure-seed", "7"],
+            sleep=sleep_calls.append,
+        )
+
+        assert exit_code == 0
+        assert sleep_calls
 
 
 class TestExitCodes:
