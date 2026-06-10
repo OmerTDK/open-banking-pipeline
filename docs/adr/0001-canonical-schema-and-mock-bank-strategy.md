@@ -3,6 +3,12 @@
 **Date:** 2026-06-10
 **Status:** Accepted
 
+> **Amendment (2026-06-10):** This ADR says FX conversion detail "stays in the raw landing
+> zone". ADR-0003 subsequently decided that Phase 1 persists only canonical-shaped data — no
+> raw landing zone exists yet, so the per-bank FX detail currently lives only in the
+> checked-in fixtures. If a consumer needs raw replay, a raw zone is added per ADR-0003's
+> consequences. The wording below is left as written.
+
 ## Context
 
 The pipeline must ingest transactions from multiple upstream banks whose APIs disagree on
@@ -21,6 +27,9 @@ banks that force real canonicalization work.
 | `fjellvik` | Berlin-Group/PSD2-style JSON | Nested `booked`/`pending` arrays, amounts as **strings** inside a `transactionAmount` object, ISO dates, per-account endpoints, `currencyExchange` detail for FX |
 | `marlstone` | FDX-style JSON | Flat camelCase entries, **unsigned numeric** amounts with a `DEBIT`/`CREDIT` indicator, ISO-8601 UTC timestamps, `POSTED`/`PENDING` status, `originalCurrency`/`originalAmount` for FX |
 | `taktwerk` | Legacy CSV export | Semicolon delimiter, `dd.mm.yyyy` dates, decimal-comma amounts with dot thousands separators, no status column (booked-only), no transaction ID column, localized references, `Original Amount`/`Original Currency` columns for FX |
+
+The bank names are invented; `taktwerk` is also the name of an unrelated Swiss consultancy,
+a collision we accept (non-financial industry, generic German word).
 
 Every bank books its amounts in the account currency, as real bank statements do; the
 original foreign amount and currency of an FX transaction appear only as source-side detail

@@ -1,6 +1,10 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install lint test ci docker-build docker-test
+.PHONY: help install lint test ingest e2e ci docker-build docker-test
+
+E2E_DATABASE := /tmp/open-banking-e2e.duckdb
+E2E_SECOND_RUN_LOG := /tmp/open-banking-e2e-second-run.log
+E2E_BANK_COUNT := 3
 
 help: ## List available targets
 	@grep -E '^[a-zA-Z][a-zA-Z0-9_-]*:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-16s %s\n", $$1, $$2}'
@@ -15,7 +19,17 @@ lint: ## Ruff lint and format check
 test: ## Run the test suite
 	uv run pytest -v
 
-ci: lint test ## Run the full CI suite locally
+ingest: ## Ingest all mock banks into data/local/landing.duckdb (with fault injection)
+	uv run open-banking-ingest --failure-seed 7
+
+e2e: ## End-to-end ingestion into a fresh throwaway store; the second run must land zero new rows
+	rm -f $(E2E_DATABASE)
+	uv run open-banking-ingest --database $(E2E_DATABASE) --failure-seed 7
+	uv run open-banking-ingest --database $(E2E_DATABASE) > $(E2E_SECOND_RUN_LOG)
+	cat $(E2E_SECOND_RUN_LOG)
+	test "$$(grep -c 'accounts +0  transactions +0' $(E2E_SECOND_RUN_LOG))" -eq $(E2E_BANK_COUNT)
+
+ci: lint test e2e ## Run the full CI suite locally
 
 docker-build: ## Build the project image
 	docker build -t open-banking-pipeline .
