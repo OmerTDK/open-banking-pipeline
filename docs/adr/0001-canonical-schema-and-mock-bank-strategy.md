@@ -18,9 +18,15 @@ banks that force real canonicalization work.
 
 | Bank | Style | Divergence it forces |
 | --- | --- | --- |
-| `fjellvik` | Berlin-Group/PSD2-style JSON | Nested `booked`/`pending` arrays, amounts as **strings** inside a `transactionAmount` object, ISO dates, per-account endpoints |
+| `fjellvik` | Berlin-Group/PSD2-style JSON | Nested `booked`/`pending` arrays, amounts as **strings** inside a `transactionAmount` object, ISO dates, per-account endpoints, `currencyExchange` detail for FX |
 | `marlstone` | FDX-style JSON | Flat camelCase entries, **unsigned numeric** amounts with a `DEBIT`/`CREDIT` indicator, ISO-8601 UTC timestamps, `POSTED`/`PENDING` status, `originalCurrency`/`originalAmount` for FX |
-| `taktwerk` | Legacy CSV export | Semicolon delimiter, `dd.mm.yyyy` dates, decimal-comma amounts with dot thousands separators, no status column (booked-only), localized references |
+| `taktwerk` | Legacy CSV export | Semicolon delimiter, `dd.mm.yyyy` dates, decimal-comma amounts with dot thousands separators, no status column (booked-only), no transaction ID column, localized references, `Original Amount`/`Original Currency` columns for FX |
+
+Every bank books its amounts in the account currency, as real bank statements do; the
+original foreign amount and currency of an FX transaction appear only as source-side detail
+(fjellvik `currencyExchange`, marlstone `originalCurrency`/`originalAmount`, taktwerk
+`Original Amount`/`Original Currency`). That keeps the canonical `amount` contract — signed,
+in the account currency — satisfiable by every adapter.
 
 All three are served from checked-in fixtures under `fixtures/<bank>/` containing 2 accounts
 and 15–16 transactions each, including the edge cases every adapter must survive: refunds
@@ -71,8 +77,10 @@ the contract round-trippable while making a wrong key impossible to construct.
 
 - **Balances** — account balances are a separate concern with different freshness semantics;
   not needed for transaction aggregation.
-- **FX conversion detail** (exchange rates, original amounts) — only the transaction
-  currency is canonical; original-currency detail stays in the raw landing zone.
+- **FX conversion detail** (exchange rates, original amounts) — only the account-currency
+  amount is canonical; each bank's original-currency detail (fjellvik `currencyExchange`,
+  marlstone `originalCurrency`/`originalAmount`, taktwerk `Original Amount`/`Original
+  Currency`) stays in the raw landing zone.
 - **Merchant enrichment** (merchant IDs, MCC codes) — only one mock bank could supply
   anything like it; an enrichment layer can add it later without a schema break.
 - **Intraday timestamps** — see `booking_date` above.

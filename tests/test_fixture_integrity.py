@@ -3,11 +3,17 @@
 Each bank deliberately exposes a different shape:
 
 - fjellvik: Berlin-Group/PSD2-style JSON (nested booked/pending arrays,
-  string amounts inside a transactionAmount object, ISO dates).
+  string amounts inside a transactionAmount object, ISO dates, FX carried
+  as currencyExchange detail next to the account-currency amount).
 - marlstone: FDX-style JSON (flat camelCase entries, numeric amounts with a
-  DEBIT/CREDIT indicator, ISO-8601 UTC timestamps, POSTED/PENDING status).
+  DEBIT/CREDIT indicator, ISO-8601 UTC timestamps, POSTED/PENDING status,
+  FX via originalCurrency/originalAmount).
 - taktwerk: legacy CSV export (semicolon-delimited, dd.mm.yyyy dates,
-  decimal-comma amounts, booked transactions only).
+  decimal-comma amounts, booked transactions only, FX via Original
+  Amount/Original Currency columns).
+
+Every bank books its amounts in the account currency, as real statements
+do; the foreign side of an FX transaction is source-side detail only.
 """
 
 import csv
@@ -29,8 +35,11 @@ TAKTWERK_EXPECTED_HEADER = [
     "Reference",
     "Amount",
     "Currency",
+    "Original Amount",
+    "Original Currency",
     "Account Number",
 ]
+ACCOUNT_CURRENCY = "EUR"
 LEGACY_DATE_PATTERN = re.compile(r"^\d{2}\.\d{2}\.\d{4}$")
 DECIMAL_COMMA_AMOUNT_PATTERN = re.compile(r"^-?\d{1,3}(\.\d{3})*,\d{2}$")
 
@@ -104,15 +113,23 @@ class TestFjellvikFixtures:
         ]
         assert refunds
 
+    def test_all_amounts_are_booked_in_account_currency(self) -> None:
+        booked, pending = load_fjellvik_transactions()
+
+        for transaction in booked + pending:
+            assert transaction["transactionAmount"]["currency"] == ACCOUNT_CURRENCY
+
     def test_contains_foreign_currency_edge_case(self) -> None:
         booked, _ = load_fjellvik_transactions()
 
-        foreign = [
-            transaction
-            for transaction in booked
-            if transaction["transactionAmount"]["currency"] != "EUR"
-        ]
+        foreign = [transaction for transaction in booked if "currencyExchange" in transaction]
         assert foreign
+        for transaction in foreign:
+            exchange = transaction["currencyExchange"][0]
+            assert exchange["sourceCurrency"] != ACCOUNT_CURRENCY
+            assert exchange["targetCurrency"] == ACCOUNT_CURRENCY
+            assert exchange["instructedAmount"]["currency"] == exchange["sourceCurrency"]
+            assert transaction["transactionAmount"]["currency"] == ACCOUNT_CURRENCY
 
     def test_booked_transactions_have_iso_booking_dates(self) -> None:
         booked, _ = load_fjellvik_transactions()
@@ -227,10 +244,21 @@ class TestTaktwerkFixtures:
         ]
         assert refunds
 
+    def test_all_amounts_are_booked_in_account_currency(self) -> None:
+        _, rows = load_taktwerk_rows("transactions_export.csv")
+
+        for row in rows:
+            assert row["Currency"] == ACCOUNT_CURRENCY
+
     def test_contains_foreign_currency_edge_case(self) -> None:
         _, rows = load_taktwerk_rows("transactions_export.csv")
 
-        assert any(row["Currency"] != "EUR" for row in rows)
+        foreign = [row for row in rows if row["Original Currency"]]
+        assert foreign
+        for row in foreign:
+            assert row["Original Currency"] != ACCOUNT_CURRENCY
+            assert DECIMAL_COMMA_AMOUNT_PATTERN.fullmatch(row["Original Amount"])
+            assert row["Currency"] == ACCOUNT_CURRENCY
 
     def test_spans_multiple_accounts(self) -> None:
         _, rows = load_taktwerk_rows("transactions_export.csv")

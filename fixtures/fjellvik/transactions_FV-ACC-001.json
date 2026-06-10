@@ -57,9 +57,20 @@
         "bookingDate": "2026-05-09",
         "valueDate": "2026-05-09",
         "transactionAmount": {
-          "currency": "USD",
-          "amount": "-129.99"
+          "currency": "EUR",
+          "amount": "-119.37"
         },
+        "currencyExchange": [
+          {
+            "sourceCurrency": "USD",
+            "targetCurrency": "EUR",
+            "exchangeRate": "0.9183",
+            "instructedAmount": {
+              "currency": "USD",
+              "amount": "-129.99"
+            }
+          }
+        ],
         "creditorName": "Nimbus Cloud Services Inc",
         "remittanceInformationUnstructured": "Annual subscription, charged in USD",
         "bankTransactionCode": "PMNT-CCRD-POSD"
