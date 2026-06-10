@@ -236,6 +236,21 @@ class TestMarlstoneAdapter:
         with pytest.raises(ValueError, match="unsigned"):
             marlstone_adapter.map_transaction(raw_transaction, marlstone_extract.accounts[0])
 
+    def test_zero_source_amount_is_rejected(self, marlstone_extract: BankExtract) -> None:
+        raw_transaction = {
+            "transactionId": "MS-TXN-00004",
+            "accountId": "MS-330011",
+            "transactionTimestamp": "2026-06-01T00:00:00Z",
+            "description": "ZERO AMOUNT",
+            "debitCreditMemo": "DEBIT",
+            "amount": Decimal("0.00"),
+            "status": "POSTED",
+            "category": "Fees",
+        }
+
+        with pytest.raises(ValueError, match="unsigned"):
+            marlstone_adapter.map_transaction(raw_transaction, marlstone_extract.accounts[0])
+
     def test_known_account_with_zero_transactions_lands_empty(
         self, marlstone_fixtures_with_empty_account: Path
     ) -> None:
