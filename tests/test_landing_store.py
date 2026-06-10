@@ -15,7 +15,11 @@ from open_banking_pipeline.canonical import (
     derive_account_id,
     derive_transaction_id,
 )
-from open_banking_pipeline.ingestion.landing import LandingConflictError, LandingStore
+from open_banking_pipeline.ingestion.landing import (
+    AmountScaleError,
+    LandingConflictError,
+    LandingStore,
+)
 
 
 def make_account(source_account_id: str = "FV-ACC-001") -> CanonicalAccount:
@@ -143,6 +147,28 @@ class TestConflictDetection:
 
         with pytest.raises(LandingConflictError, match="account"):
             store.insert_new_accounts([conflicting])
+
+
+class TestAmountScaleGuard:
+    def test_amount_with_more_than_four_decimal_places_is_rejected(
+        self, store: LandingStore
+    ) -> None:
+        out_of_scale = make_transaction(amount=Decimal("1.23456"))
+
+        with pytest.raises(AmountScaleError, match="decimal places"):
+            store.insert_new_transactions([out_of_scale])
+
+        assert store.count_transactions() == 0
+
+    def test_amount_with_exactly_four_decimal_places_lands_unrounded(
+        self, store: LandingStore
+    ) -> None:
+        boundary = make_transaction(amount=Decimal("-0.1234"))
+        store.insert_new_transactions([boundary])
+
+        restored = store.get_transaction(boundary.transaction_id)
+
+        assert restored.amount == Decimal("-0.1234")
 
 
 class TestDeterministicExport:

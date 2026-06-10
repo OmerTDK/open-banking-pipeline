@@ -52,7 +52,10 @@ CREATE TABLE IF NOT EXISTS accounts (
     iban VARCHAR
 )
 """
-CREATE_TRANSACTIONS_TABLE = """
+AMOUNT_PRECISION = 18
+AMOUNT_SCALE = 4
+
+CREATE_TRANSACTIONS_TABLE = f"""
 CREATE TABLE IF NOT EXISTS transactions (
     transaction_id VARCHAR PRIMARY KEY,
     account_id VARCHAR NOT NULL,
@@ -62,7 +65,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     status VARCHAR NOT NULL,
     booking_date DATE,
     value_date DATE,
-    amount DECIMAL(18, 4) NOT NULL,
+    amount DECIMAL({AMOUNT_PRECISION}, {AMOUNT_SCALE}) NOT NULL,
     currency VARCHAR NOT NULL,
     counterparty_name VARCHAR,
     counterparty_account VARCHAR,
@@ -75,6 +78,20 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 class LandingConflictError(Exception):
     """An identifier arrived again with different content; refusing to guess."""
+
+
+class AmountScaleError(Exception):
+    """An amount carries more decimal places than the landing schema stores losslessly."""
+
+
+def _reject_out_of_scale_amount(transaction: CanonicalTransaction) -> None:
+    decimal_places = -transaction.amount.as_tuple().exponent
+    if decimal_places > AMOUNT_SCALE:
+        raise AmountScaleError(
+            f"transaction {transaction.transaction_id!r} amount {transaction.amount} has "
+            f"{decimal_places} decimal places; DECIMAL({AMOUNT_PRECISION}, {AMOUNT_SCALE}) "
+            f"would silently round it"
+        )
 
 
 class LandingStore:
@@ -118,9 +135,19 @@ class LandingStore:
         )
 
     def insert_new_transactions(self, transactions: Iterable[CanonicalTransaction]) -> int:
-        """Insert unseen transactions; return how many were new."""
+        """Insert unseen transactions; return how many were new.
+
+        Raises:
+            AmountScaleError: An amount would be silently rounded by the schema.
+            LandingConflictError: A transaction id arrived with different content.
+        """
+        identified_transactions = [
+            (transaction.transaction_id, transaction) for transaction in transactions
+        ]
+        for _, transaction in identified_transactions:
+            _reject_out_of_scale_amount(transaction)
         return self._insert_atomically(
-            [(transaction.transaction_id, transaction) for transaction in transactions],
+            identified_transactions,
             table_name="transactions",
             columns=TRANSACTION_COLUMNS,
             fetch_existing=self.get_transaction,
