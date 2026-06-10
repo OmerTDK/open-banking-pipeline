@@ -12,12 +12,18 @@ Idempotency key derivation (the replay-safety contract for all loads):
   enforcement, an identifier containing the separator could shift material
   between fields and collide with a different record.
 
+For sources without a stable transaction id (taktwerk's legacy CSV export),
+``source_transaction_id`` itself is derived from record content via
+``derive_content_source_transaction_id`` — ADR-0001 documents the field list
+and collision stance.
+
 Both identifiers are regular fields so canonical records survive a
 serialize/re-validate round trip, but model validators recompute the
 derivation and reject any mismatch — an adapter cannot ship a wrong key.
 """
 
 import hashlib
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 from enum import StrEnum
@@ -26,6 +32,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 KEY_SEPARATOR = "\x1f"
+CONTENT_ID_PREFIX = "content"
 ISO_4217_PATTERN = r"^[A-Z]{3}$"
 
 
@@ -91,6 +98,30 @@ def derive_transaction_id(
     reject_control_characters("source_transaction_id", source_transaction_id)
     key_material = KEY_SEPARATOR.join([source_bank.value, source_account_id, source_transaction_id])
     return hashlib.sha256(key_material.encode("utf-8")).hexdigest()
+
+
+def derive_content_source_transaction_id(
+    field_values: Sequence[str],
+    occurrence_index: int,
+) -> str:
+    """Derive a ``source_transaction_id`` for sources without stable transaction ids.
+
+    ``field_values`` is every column of the source record in source order, raw
+    values as exported (empty strings included). ``occurrence_index`` is the
+    zero-based count of byte-identical earlier records within the same export,
+    so two identical real-world transactions stay distinct while replays of
+    the same export derive the same ids (ADR-0001 documents the collision
+    stance).
+    """
+    if not field_values:
+        raise ValueError("field_values must not be empty; an empty record has no identity")
+    if occurrence_index < 0:
+        raise ValueError(f"occurrence_index must be >= 0, got {occurrence_index}")
+    for field_value in field_values:
+        reject_control_characters("content field value", field_value)
+    key_material = KEY_SEPARATOR.join(field_values)
+    digest = hashlib.sha256(key_material.encode("utf-8")).hexdigest()
+    return f"{CONTENT_ID_PREFIX}:{digest}:{occurrence_index}"
 
 
 class CanonicalAccount(BaseModel):

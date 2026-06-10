@@ -73,6 +73,29 @@ validators** rather than pydantic computed fields: computed fields are emitted b
 serialize/re-validate round trips (verified against pydantic 2.13.4). Explicit fields keep
 the contract round-trippable while making a wrong key impossible to construct.
 
+### Idempotency for sources without transaction IDs (taktwerk)
+
+taktwerk's legacy CSV export has no transaction ID column, so "identity is a pure function
+of the source-provided ID" cannot apply to it. For ID-less sources the adapter derives
+`source_transaction_id` from record content via `derive_content_source_transaction_id`:
+
+- **Key material** — every column of the export row in header order, raw values exactly as
+  exported (empty strings included), joined by the `\x1f` separator. For taktwerk that is
+  exactly: `Booking Date`, `Value Date`, `Counterparty`, `Reference`, `Amount`, `Currency`,
+  `Original Amount`, `Original Currency`, `Account Number`.
+- **Derived id** — `content:{sha256-hex}:{occurrence_index}`, where `occurrence_index` is
+  the zero-based count of byte-identical earlier rows within the same export.
+- **Collision stance** — two byte-identical rows are two real transactions (e.g. two equal
+  card payments booked the same day); the occurrence index keeps them distinct. The index
+  follows file order, so replaying the same export derives the same ids. If the upstream
+  ever reorders byte-identical rows between exports, ids can only swap among rows that are
+  indistinguishable anyway, leaving the materialized canonical state unchanged. Rows that
+  differ in any column can never collide: the hash covers every column, and control
+  characters in field values are rejected, keeping the joined key material injective.
+
+The derived value then feeds the standard `transaction_id` derivation, so ID-less sources
+get the same replay-safety guarantees as every other bank.
+
 ### Left out of the canonical schema (deliberately)
 
 - **Balances** — account balances are a separate concern with different freshness semantics;
@@ -99,9 +122,13 @@ the contract round-trippable while making a wrong key impossible to construct.
   quirks onto every consumer, which is the exact problem a canonical layer exists to solve.
 - **Random UUIDs or load-run IDs as transaction identity** — rejected: replays would create
   duplicates; idempotency requires identity to be a pure function of the source record.
-- **Hashing transaction content (date+amount+description) as the idempotency key** —
-  rejected for banks that provide stable IDs: two legitimate identical purchases on the same
-  day would collide. Revisit only if a future source lacks stable transaction IDs.
+- **Hashing transaction content as the idempotency key for every bank** — rejected for
+  banks that provide stable IDs: the source ID survives upstream corrections to amount or
+  description, a content hash does not. The condition "a source lacks stable transaction
+  IDs" is not hypothetical — taktwerk has no transaction ID column today, so the
+  content-derived key defined in the Decision section applies to it now, with the
+  occurrence index resolving the identical-purchase collision that made content hashing
+  unacceptable as the default.
 - **`float` amounts** — rejected: binary floats cannot represent cents exactly; `Decimal`
   end to end.
 - **Pydantic computed fields for the derived identifiers** — rejected after verification:

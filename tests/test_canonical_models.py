@@ -15,6 +15,7 @@ from open_banking_pipeline.canonical import (
     TransactionCategory,
     TransactionStatus,
     derive_account_id,
+    derive_content_source_transaction_id,
     derive_transaction_id,
 )
 
@@ -86,6 +87,74 @@ class TestIdempotencyKeyDerivation:
         second_account = derive_transaction_id(SourceBank.TAKTWERK, "TW-7702", "TX-1")
 
         assert first_account != second_account
+
+
+TAKTWERK_EXPORT_ROW = [
+    "02.05.2026",
+    "03.05.2026",
+    "GREENFIELD GROCERS",
+    "Kartenzahlung Lebensmittel",
+    "-31,86",
+    "EUR",
+    "",
+    "",
+    "TW-7701",
+]
+
+
+class TestContentDerivedSourceTransactionId:
+    def test_same_row_and_occurrence_derive_the_same_id(self) -> None:
+        first = derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, 0)
+        second = derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, 0)
+
+        assert first == second
+
+    def test_distinct_row_content_derives_distinct_ids(self) -> None:
+        changed_amount_row = [*TAKTWERK_EXPORT_ROW[:4], "-31,87", *TAKTWERK_EXPORT_ROW[5:]]
+
+        original = derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, 0)
+        changed = derive_content_source_transaction_id(changed_amount_row, 0)
+
+        assert original != changed
+
+    def test_identical_rows_are_distinguished_by_occurrence_index(self) -> None:
+        first_occurrence = derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, 0)
+        second_occurrence = derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, 1)
+
+        assert first_occurrence != second_occurrence
+
+    def test_field_order_matters(self) -> None:
+        swapped = derive_content_source_transaction_id(["a", "b"], 0)
+        original = derive_content_source_transaction_id(["b", "a"], 0)
+
+        assert swapped != original
+
+    def test_negative_occurrence_index_rejected(self) -> None:
+        with pytest.raises(ValueError, match="occurrence_index"):
+            derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, -1)
+
+    def test_empty_field_list_rejected(self) -> None:
+        with pytest.raises(ValueError, match="field_values"):
+            derive_content_source_transaction_id([], 0)
+
+    def test_control_characters_in_field_values_rejected(self) -> None:
+        with pytest.raises(ValueError, match="control character"):
+            derive_content_source_transaction_id(["02.05.2026", "GROCERS\x1fEUR"], 0)
+
+    def test_derived_id_builds_a_valid_canonical_transaction(self) -> None:
+        source_transaction_id = derive_content_source_transaction_id(TAKTWERK_EXPORT_ROW, 0)
+
+        transaction = make_transaction(
+            source_bank=SourceBank.TAKTWERK,
+            source_account_id="TW-7701",
+            source_transaction_id=source_transaction_id,
+            account_id=derive_account_id(SourceBank.TAKTWERK, "TW-7701"),
+            transaction_id=derive_transaction_id(
+                SourceBank.TAKTWERK, "TW-7701", source_transaction_id
+            ),
+        )
+
+        assert transaction.source_transaction_id == source_transaction_id
 
 
 class TestControlCharacterRejection:
