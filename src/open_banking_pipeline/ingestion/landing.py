@@ -102,16 +102,19 @@ class LandingStore:
 
     @classmethod
     def open(cls, database_path: Path) -> Self:
+        """Open (creating directories and tables as needed) a store at ``database_path``."""
         database_path.parent.mkdir(parents=True, exist_ok=True)
         store = cls(duckdb.connect(str(database_path)))
         store.initialize_schema()
         return store
 
     def initialize_schema(self) -> None:
+        """Create the accounts and transactions tables if they do not exist."""
         self._connection.execute(CREATE_ACCOUNTS_TABLE)
         self._connection.execute(CREATE_TRANSACTIONS_TABLE)
 
     def close(self) -> None:
+        """Close the underlying DuckDB connection."""
         self._connection.close()
 
     def __enter__(self) -> Self:
@@ -154,21 +157,25 @@ class LandingStore:
         )
 
     def get_account(self, account_id: str) -> CanonicalAccount | None:
+        """Return the landed account for ``account_id``, or ``None`` if absent."""
         row = self._fetch_row("accounts", ACCOUNT_COLUMNS, "account_id", account_id)
         if row is None:
             return None
         return CanonicalAccount.model_validate(dict(zip(ACCOUNT_COLUMNS, row, strict=True)))
 
     def get_transaction(self, transaction_id: str) -> CanonicalTransaction | None:
+        """Return the landed transaction for ``transaction_id``, or ``None`` if absent."""
         row = self._fetch_row("transactions", TRANSACTION_COLUMNS, "transaction_id", transaction_id)
         if row is None:
             return None
         return CanonicalTransaction.model_validate(dict(zip(TRANSACTION_COLUMNS, row, strict=True)))
 
     def count_accounts(self) -> int:
+        """Return how many accounts have landed."""
         return self._connection.execute("SELECT count(*) FROM accounts").fetchone()[0]
 
     def count_transactions(self) -> int:
+        """Return how many transactions have landed."""
         return self._connection.execute("SELECT count(*) FROM transactions").fetchone()[0]
 
     def export_transactions_jsonl(self) -> bytes:
