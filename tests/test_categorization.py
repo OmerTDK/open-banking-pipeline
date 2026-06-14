@@ -96,7 +96,8 @@ def test_transit_counterparty_is_transport() -> None:
 # Amount-based rules
 # ---------------------------------------------------------------------------
 def test_large_positive_amount_is_salary() -> None:
-    assert _cat(amount=2450.00, description="Salary May 2026") == S
+    # Uses a neutral description so only the amount heuristic can fire.
+    assert _cat(amount=2450.00, description="BRIGHTLINE CONSULTING PAYROLL") == S
 
 
 def test_small_positive_amount_is_not_salary() -> None:
@@ -106,6 +107,22 @@ def test_small_positive_amount_is_not_salary() -> None:
 
 def test_refund_keyword_positive_amount_is_shopping() -> None:
     assert _cat(amount=34.50, description="Refund for returned goods") == SH
+
+
+def test_salary_heuristic_exact_threshold_is_salary() -> None:
+    # amount == 1000.00 (the boundary) must yield SALARY (>= is inclusive).
+    # Description has no salary keyword so only the heuristic can fire.
+    assert _cat(amount=1000.00, description="Direct credit Jan") == S
+
+
+def test_just_below_threshold_is_not_salary() -> None:
+    # amount == 999.99 (one cent below threshold) must not yield SALARY.
+    assert _cat(amount=999.99, description="Direct credit Jan") != S
+
+
+def test_mid_range_below_threshold_is_not_salary() -> None:
+    # amount == 750.00 is well below threshold and has no salary keyword.
+    assert _cat(amount=750.00, description="Monthly savings plan") != S
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +180,13 @@ def test_salary_heuristic_wins_over_description_for_large_inflow() -> None:
     # Large positive amount is SALARY even when description has no salary keyword.
     # "BRIGHTLINE CONSULTING GMBH" matches no keyword rule, so the heuristic is decisive.
     assert _cat(amount=2380.50, description="BRIGHTLINE CONSULTING GMBH") == S
+
+
+def test_salary_heuristic_beats_keyword_rule_when_both_fire() -> None:
+    # ADR-0005: group 2 (salary heuristic) takes precedence over group 3 (keywords).
+    # "Eigenuebertrag" matches the TRANSFER keyword rule (group 3), but the
+    # large positive amount fires the salary heuristic (group 2) first.
+    assert _cat(amount=1500.00, description="Eigenuebertrag") == S
 
 
 def test_categorize_is_pure() -> None:

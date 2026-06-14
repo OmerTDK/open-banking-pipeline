@@ -47,9 +47,33 @@ def _tx(
     )
 
 
+def _pending_tx(
+    source_transaction_id: str,
+    amount: float,
+    category: TransactionCategory,
+    description: str | None = None,
+) -> CanonicalTransaction:
+    """Build a PENDING transaction with no booking_date (mart must exclude it)."""
+    source_bank = SourceBank.MARLSTONE
+    source_account_id = "MS-550033"
+    return CanonicalTransaction(
+        transaction_id=derive_transaction_id(source_bank, source_account_id, source_transaction_id),
+        account_id=derive_account_id(source_bank, source_account_id),
+        source_bank=source_bank,
+        source_account_id=source_account_id,
+        source_transaction_id=source_transaction_id,
+        status=TransactionStatus.PENDING,
+        booking_date=None,
+        amount=Decimal(str(amount)),
+        currency="EUR",
+        description=description,
+        category=category,
+    )
+
+
 @pytest.fixture
 def store_with_spend_data() -> LandingStore:
-    """In-memory store seeded with known outflows, one inflow, and one null date."""
+    """In-memory store seeded with known outflows and one inflow."""
     conn = duckdb.connect(":memory:")
     store = LandingStore(conn)
     store.initialize_schema()
@@ -138,6 +162,23 @@ class TestBuildSpendMart:
         )
         assert transfer_row is not None
         assert transfer_row.total_spend == Decimal("500.00")
+
+    def test_pending_transaction_without_booking_date_is_excluded(self) -> None:
+        """Mart must exclude PENDING rows — booking_date IS NOT NULL filter in mart SQL."""
+        conn = duckdb.connect(":memory:")
+        store = LandingStore(conn)
+        store.initialize_schema()
+        # One booked outflow (must appear) and one pending outflow (must not appear).
+        booked = _tx("p1", -50.00, "2026-05-01", TransactionCategory.GROCERIES, "Booked purchase")
+        pending = _pending_tx("p2", -99.00, TransactionCategory.GROCERIES, "Pending charge")
+        store.insert_new_transactions([booked, pending])
+
+        rows = build_spend_mart(store)
+
+        # Only the booked row appears.
+        assert len(rows) == 1
+        assert rows[0].total_spend == Decimal("50.00")
+        assert rows[0].transaction_count == 1
 
 
 class TestSpendMartWithRealFixtures:
