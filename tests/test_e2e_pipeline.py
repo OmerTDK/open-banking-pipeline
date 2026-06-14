@@ -14,27 +14,35 @@ Kill-verified invariant (recorded in ADR-0006):
     == record` instead, a replayed transaction would raise LandingConflictError and
     a silently-overwritten transaction would land undetected.
 
-    test_conflict_detection_kills_on_mutant documents this with a synthetic
+    test_conflict_detection_kills_on_content_change documents this with a synthetic
     conflicting record; test_replay_is_always_a_no_op documents the harmless path.
     Both must be green simultaneously for the idempotency contract to hold.
 """
 
+import json
 import subprocess
 import sys
+import tempfile
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
 from open_banking_pipeline.canonical import (
+    CanonicalTransaction,
     SourceBank,
     TransactionCategory,
+    TransactionStatus,
     derive_account_id,
     derive_transaction_id,
 )
+from open_banking_pipeline.contracts.cli import main as contracts_main
+from open_banking_pipeline.contracts.ledger import LEDGER_FILENAME
 from open_banking_pipeline.ingestion.landing import LandingConflictError, LandingStore
 from open_banking_pipeline.ingestion.retry import RetryPolicy
 from open_banking_pipeline.ingestion.runner import build_extractors, run_ingestion
+from open_banking_pipeline.mart import build_spend_mart
 from open_banking_pipeline.mock_banks.failures import PlannedFailures
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
@@ -79,26 +87,32 @@ class TestFullPipelineRun:
         # Export and verify: no row has UNCATEGORIZED as its only option is a deliberate fallback,
         # but what matters is that the category field is never null / missing from the record.
         jsonl = clean_store.export_transactions_jsonl()
-        import json
-
         for line in jsonl.decode().splitlines():
             tx = json.loads(line)
             assert tx["category"] is not None, f"null category in {tx['transaction_id']}"
             assert tx["category"] in {c.value for c in TransactionCategory}
 
     def test_spend_mart_produces_outflow_rows_only(self, clean_store: LandingStore) -> None:
-        from open_banking_pipeline.mart import build_spend_mart
-
         _run_full_ingestion(clean_store)
 
         rows = build_spend_mart(clean_store)
 
-        # All spend totals must be positive (mart negates the signed outflow amounts).
+        # All spend totals must be positive (mart uses ABS on outflow amounts).
         assert all(row.total_spend > 0 for row in rows), "mart emitted non-positive spend row"
 
-    def test_spend_mart_total_matches_known_fixture_sum(self, clean_store: LandingStore) -> None:
-        from open_banking_pipeline.mart import build_spend_mart
+        # The mart's total transaction_count must equal the number of outflow
+        # transactions in the store (amount < 0). If the WHERE clause were flipped
+        # to amount > 0 the mart would count inflows and this assertion would fail.
+        outflow_count = clean_store._connection.execute(
+            "SELECT COUNT(*) FROM transactions WHERE amount < 0 AND booking_date IS NOT NULL"
+        ).fetchone()[0]
+        mart_count = sum(row.transaction_count for row in rows)
+        assert mart_count == outflow_count, (
+            f"mart transaction_count ({mart_count}) does not match store outflow count "
+            f"({outflow_count}) — outflow filter may be wrong"
+        )
 
+    def test_spend_mart_total_matches_known_fixture_sum(self, clean_store: LandingStore) -> None:
         _run_full_ingestion(clean_store)
 
         rows = build_spend_mart(clean_store)
@@ -146,13 +160,6 @@ class TestIdempotencyInvariant:
         raised) while test_replay_is_always_a_no_op would pass (replays still land 0
         new rows). Both tests must be green for the idempotency contract to hold.
         """
-        from datetime import date
-
-        from open_banking_pipeline.canonical import (
-            CanonicalTransaction,
-            TransactionStatus,
-        )
-
         source_account_id = "FV-ACC-001"
         source_transaction_id = "FV-TX-KILL-001"
         account_id = derive_account_id(SourceBank.FJELLVIK, source_account_id)
@@ -228,9 +235,7 @@ class TestContractGate:
         This test runs the same check that CI gates every PR on. If a bank
         changes a field without bumping the contract version, this test fails.
         """
-        from open_banking_pipeline.contracts.cli import main
-
-        exit_code = main(["check", "--require-fresh"])
+        exit_code = contracts_main(["check", "--require-fresh"])
         assert exit_code == 0, (
             "contract check failed — a schema change may be missing a version bump; "
             "run `make contracts-generate` to regenerate the artifacts"
@@ -238,12 +243,6 @@ class TestContractGate:
 
     def test_removing_amount_field_from_contract_is_a_breaking_change(self) -> None:
         """Demonstrates the caught-break story: field removal is classified immediately."""
-        import json
-        import tempfile
-
-        from open_banking_pipeline.contracts.cli import main
-        from open_banking_pipeline.contracts.ledger import LEDGER_FILENAME
-
         contracts_dir = Path(__file__).parent.parent / "contracts"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -266,7 +265,7 @@ class TestContractGate:
             ct["fields"] = [f for f in ct["fields"] if f["name"] != "amount"]
             ct_path.write_text(json.dumps(ct))
 
-            exit_code = main(["check", "--contracts-dir", str(tmp_path)])
+            exit_code = contracts_main(["check", "--contracts-dir", str(tmp_path)])
 
         assert exit_code != 0, (
             "contract check passed despite a removed field — breaking-change detection is broken"
@@ -274,12 +273,6 @@ class TestContractGate:
 
     def test_type_change_on_amount_is_a_breaking_change(self) -> None:
         """Type changes are classified as breaking and require a major version bump."""
-        import json
-        import tempfile
-
-        from open_banking_pipeline.contracts.cli import main
-        from open_banking_pipeline.contracts.ledger import LEDGER_FILENAME
-
         contracts_dir = Path(__file__).parent.parent / "contracts"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -300,7 +293,7 @@ class TestContractGate:
                     field["type"] = "string"
             ct_path.write_text(json.dumps(ct))
 
-            exit_code = main(["check", "--contracts-dir", str(tmp_path)])
+            exit_code = contracts_main(["check", "--contracts-dir", str(tmp_path)])
 
         assert exit_code != 0, (
             "contract check passed despite a type change — breaking-change detection is broken"
@@ -311,6 +304,12 @@ class TestCLIExitCodes:
     """The CLI must exit non-zero on any partial failure (scheduler compatibility)."""
 
     def test_ingest_cli_exits_zero_on_clean_run(self, tmp_path: Path) -> None:
+        """A clean run against real fixtures must exit 0.
+
+        Invokes ``python -m open_banking_pipeline`` (backed by ``__main__.py``
+        which delegates to ``cli.main``).  The assertion is strict (== 0) so a
+        crash or a partial failure is caught rather than silently accepted.
+        """
         result = subprocess.run(
             [
                 sys.executable,
@@ -322,9 +321,6 @@ class TestCLIExitCodes:
             capture_output=True,
             text=True,
         )
-        # The CLI module is the entry point wired in pyproject.toml.
-        # A clean run exits 0; a partial failure exits 1.
-        # Either 0 or 1 is valid here — what matters is not 2+.
-        assert result.returncode in (0, 1), (
-            f"ingest CLI crashed with exit {result.returncode}: {result.stderr}"
+        assert result.returncode == 0, (
+            f"ingest CLI exited {result.returncode} on a clean run: {result.stderr}"
         )
