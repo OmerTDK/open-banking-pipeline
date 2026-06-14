@@ -27,7 +27,7 @@ Rules are evaluated in three groups, top-wins:
 |---|---|---|
 | 1 | `raw_category` — bank's own label, normalised to lower | Highest precision: when a bank provides its own label, trust it over heuristics. |
 | 2 | Amount threshold (>= 1 000 EUR positive) → SALARY | A large positive inflow is almost always salary; this catches cases where the bank gives no category and the description has no keyword. |
-| 3 | Keyword substring search over `description` + `counterparty_name` | Covers the rest; 68 keywords across 13 categories. |
+| 3 | Keyword substring search over `description` + `counterparty_name` | Covers the rest; 62 keywords across 13 categories. |
 
 Within group 3, rules are evaluated in the order they appear in `_KEYWORD_RULES`.
 This makes the engine fully deterministic: given the same inputs, the same

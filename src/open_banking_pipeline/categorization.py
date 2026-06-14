@@ -49,6 +49,7 @@ _RAW_CATEGORY_MAP: dict[str, TransactionCategory] = {
 # Keyword rules for description + counterparty_name (case-insensitive).
 # Format: (keyword_substring, TransactionCategory).
 # Evaluated in order; first match wins within this group.
+# Current count: 62 entries — update docs/adr/0005 and README when adding rules.
 _KEYWORD_RULES: tuple[tuple[str, TransactionCategory], ...] = (
     # Cash / ATM — tested before generic "bank" or counterparty keywords
     ("cash withdrawal", TransactionCategory.CASH_WITHDRAWAL),
