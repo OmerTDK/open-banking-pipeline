@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install lint test ingest e2e contracts-generate contracts-check ci docker-build docker-test
+.PHONY: help install lint test ingest e2e mart contracts-generate contracts-check ci docker-build docker-test
 
 E2E_DATABASE := /tmp/open-banking-e2e.duckdb
 E2E_SECOND_RUN_LOG := /tmp/open-banking-e2e-second-run.log
@@ -22,12 +22,16 @@ test: ## Run the test suite
 ingest: ## Ingest all mock banks into data/local/landing.duckdb (with fault injection)
 	uv run open-banking-ingest --failure-seed 7
 
-e2e: ## End-to-end ingestion into a fresh throwaway store; the second run must land zero new rows
+e2e: ## End-to-end ingestion into a fresh throwaway store; the second run must land zero new rows, mart prints spend summary
 	rm -f $(E2E_DATABASE)
 	uv run open-banking-ingest --database $(E2E_DATABASE) --failure-seed 7
 	uv run open-banking-ingest --database $(E2E_DATABASE) > $(E2E_SECOND_RUN_LOG)
 	cat $(E2E_SECOND_RUN_LOG)
 	test "$$(grep -c 'accounts +0  transactions +0' $(E2E_SECOND_RUN_LOG))" -eq $(E2E_BANK_COUNT)
+	uv run open-banking-mart --database $(E2E_DATABASE)
+
+mart: ## Print spend-by-category-by-month from data/local/landing.duckdb
+	uv run open-banking-mart
 
 contracts-generate: ## Regenerate the committed contract artifacts from code
 	uv run open-banking-contracts generate

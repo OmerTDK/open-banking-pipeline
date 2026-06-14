@@ -1,0 +1,14 @@
+{
+  "consumer": "spend_mart",
+  "consumes": {
+    "canonical_transaction": {
+      "fields": [
+        "transaction_id",
+        "booking_date",
+        "amount",
+        "category"
+      ],
+      "acknowledged_version": "1.0.0"
+    }
+  }
+}
