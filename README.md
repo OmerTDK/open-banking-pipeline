@@ -1,5 +1,7 @@
 # open-banking-pipeline
 
+[![Docs](https://github.com/OmerTDK/open-banking-pipeline/actions/workflows/docs.yml/badge.svg)](https://omertdk.github.io/open-banking-pipeline/)
+
 Three banks. Three incompatible schemas. One canonical model with machine-enforced contracts and a CI gate that proves it.
 
 ---
