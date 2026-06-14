@@ -42,7 +42,7 @@ flowchart TD
 
     subgraph canonical["Canonical layer"]
         CT["CanonicalTransaction\nSigned Decimal amount\nSHA-256 idempotency key\nfrozen pydantic model, extra=forbid"]
-        CAT["Categorization engine\n3-group first-match\n62 keywords, 14 categories"]
+        CAT["Categorization engine\n3-group first-match\n62 keyword rules, 13 categories"]
     end
 
     subgraph landing["Landing store (DuckDB)"]
@@ -273,9 +273,10 @@ ADR-0006 documents the trade-off and the extension path.
 | ADR | Decision |
 |---|---|
 | [0001](docs/adr/0001-canonical-schema-and-mock-bank-strategy.md) | Canonical schema fields; three mock banks with divergent shapes; content-derived IDs for ID-less sources |
+| 0002 | Withdrawn — scope merged into ADR-0001 before it was written |
 | [0003](docs/adr/0003-mock-api-shapes-and-ingestion-architecture.md) | Mock API interaction shapes; ingestion architecture; idempotency and failure isolation |
 | [0004](docs/adr/0004-data-contracts-and-breaking-change-detection.md) | Code-derived contracts; 15-type change classifier; consumer manifest veto; subjects ledger |
-| [0005](docs/adr/0005-categorization-and-spend-mart.md) | First-match rule engine (3 groups, 62 keywords); runner placement; mart grain |
+| [0005](docs/adr/0005-categorization-and-spend-mart.md) | First-match rule engine (3 groups, 62 keyword rules, 13 categories); runner placement; mart grain |
 | [0006](docs/adr/0006-e2e-validation-and-definition-of-done.md) | Two-layer e2e validation; kill-verified invariant; subjects ledger as the hardest decision |
 
 ---
