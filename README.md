@@ -42,7 +42,7 @@ flowchart TD
 
     subgraph canonical["Canonical layer"]
         CT["CanonicalTransaction\nSigned Decimal amount\nSHA-256 idempotency key\nfrozen pydantic model, extra=forbid"]
-        CAT["Categorization engine\n3-group first-match\n68 keywords, 14 categories"]
+        CAT["Categorization engine\n3-group first-match\n62 keywords, 14 categories"]
     end
 
     subgraph landing["Landing store (DuckDB)"]
@@ -93,7 +93,7 @@ Per-bank adapters
 
 Categorization engine
   apply_category()    stamps every transaction before it lands
-  3-group first-match: raw bank label > salary heuristic > 68 keywords
+  3-group first-match: raw bank label > salary heuristic > 62 keywords
 
 Landing store (DuckDB, single file)
   accounts + transactions
@@ -124,7 +124,7 @@ git clone https://github.com/OmerTDK/open-banking-pipeline
 cd open-banking-pipeline
 uv sync
 
-# Full CI (lint + 383 tests + contract check + e2e) — completes in ~3 s
+# Full CI (lint + tests + contract check + e2e) — completes in ~3 s
 make ci
 
 # Ingest fixture transactions into data/local/landing.duckdb
@@ -140,7 +140,7 @@ All make targets:
 |---|---|
 | `make ci` | lint + test + contracts-check + e2e in sequence |
 | `make lint` | ruff check + format --check |
-| `make test` | pytest -v (383 tests) |
+| `make test` | pytest -v (run the test suite) |
 | `make contracts-check` | fail on breaking or unregenerated contract changes |
 | `make contracts-generate` | regenerate committed artifacts from code |
 | `make ingest` | land 46 fixture transactions with fault-injection seed 7 |
@@ -275,7 +275,7 @@ ADR-0006 documents the trade-off and the extension path.
 | [0001](docs/adr/0001-canonical-schema-and-mock-bank-strategy.md) | Canonical schema fields; three mock banks with divergent shapes; content-derived IDs for ID-less sources |
 | [0003](docs/adr/0003-mock-api-shapes-and-ingestion-architecture.md) | Mock API interaction shapes; ingestion architecture; idempotency and failure isolation |
 | [0004](docs/adr/0004-data-contracts-and-breaking-change-detection.md) | Code-derived contracts; 15-type change classifier; consumer manifest veto; subjects ledger |
-| [0005](docs/adr/0005-categorization-and-spend-mart.md) | First-match rule engine (3 groups, 68 keywords); runner placement; mart grain |
+| [0005](docs/adr/0005-categorization-and-spend-mart.md) | First-match rule engine (3 groups, 62 keywords); runner placement; mart grain |
 | [0006](docs/adr/0006-e2e-validation-and-definition-of-done.md) | Two-layer e2e validation; kill-verified invariant; subjects ledger as the hardest decision |
 
 ---
@@ -288,6 +288,4 @@ All conventions in [standards/](standards/) govern code in this repo.
 |---|---|
 | Engineering principles | [standards/engineering-principles.md](standards/engineering-principles.md) |
 | Python standards | [standards/python-standards.md](standards/python-standards.md) |
-| SQL standards | [standards/clean-sql.md](standards/clean-sql.md) |
-| dbt standards | [standards/dbt-standards.md](standards/dbt-standards.md) |
 | Git workflow | [standards/git-workflow.md](standards/git-workflow.md) |
