@@ -1,80 +1,73 @@
 # open-banking-pipeline
 
-Multi-bank PSD2-style transaction aggregation pipeline with a canonical schema,
-deterministic categorization, and machine-enforced data contracts.
+Ingest transactions from N mock banks with deliberately divergent schemas into one canonical, categorized model — with machine-enforced data contracts that block breaking changes before any consumer is affected.
+
+No cloud credentials. No live endpoints. Clone and run.
 
 ---
 
-## What this demonstrates
+## The problem
 
-Open Banking aggregation is the canonical EU fintech integration problem: N
-upstream providers with deliberately divergent schemas, pagination shapes, and
-error behaviors, all forced into one governed canonical model. The hard parts
-are architectural:
+Open Banking aggregation is the canonical EU fintech integration problem. Real banks (PSD2, FDX, legacy CSV exporters) ship incompatible field names, pagination styles, amount sign conventions, and date formats. A naive approach normalizes on the way in and hopes nothing changes. When something does change, every downstream consumer breaks silently.
 
-- **Canonical schema design under divergence** — every mapping decision is
-  documented (ADR-0001) and tested; the schema is strict enough that drift
-  surfaces as loud validation errors.
-- **Idempotent, replay-safe loads** — the same pipeline run produces identical
-  state whether it is the first run or the hundredth; upstream corrections
-  raise a loud error, never a silent overwrite.
-- **Machine-enforced data contracts** — breaking changes to the canonical schema
-  are classified and blocked in CI before any consumer is affected; a
-  demonstrated caught break is below.
-
-No cloud credentials, no live endpoints, no external services. Clone and run.
+This pipeline treats the canonical schema as a versioned contract, classifies every change to it (15 change types), and fails CI before a breaking change reaches any consumer.
 
 ---
 
 ## Architecture
 
-```
-fixtures/
-  fjellvik/      PSD2-style JSON — nested booked/pending arrays,
-                 amounts as strings in a transactionAmount object
-  marlstone/     FDX-style JSON — flat camelCase, unsigned amounts
-                 plus DEBIT/CREDIT indicator
-  taktwerk/      Legacy CSV export — dd.mm.yyyy dates, decimal-comma
-                 amounts, no transaction ID column
+```mermaid
+flowchart TD
+    subgraph Sources ["Mock Bank APIs (fixture-driven, in-process)"]
+        F["Fjellvik\nPSD2-style JSON\npage-link pagination\namounts in transactionAmount object"]
+        M["Marlstone\nFDX-style JSON\ncursor pagination\nunsigned + DEBIT/CREDIT indicator"]
+        T["Taktwerk\nLegacy CSV export\ndd.mm.yyyy dates\ndecimal-comma amounts\nno transaction ID column"]
+    end
 
-Mock bank APIs (in-process, no HTTP)
-  FjellvikMockBank   page-link pagination  + planned 429 injection
-  MarlstoneMockBank  cursor pagination
-  TaktwerkMockBank   whole-file download   + planned truncation injection
+    subgraph Adapters ["Per-bank Adapters"]
+        FA["fjellvik.py"]
+        MA["marlstone.py"]
+        TA["taktwerk.py\ncontent-derived idempotency key"]
+    end
 
-Per-bank adapters
-  fjellvik.py    PSD2 nested JSON  ->  CanonicalTransaction
-  marlstone.py   FDX flat JSON     ->  CanonicalTransaction
-  taktwerk.py    legacy CSV        ->  CanonicalTransaction
-                 (content-derived idempotency key — no stable tx ID)
+    subgraph Canonical ["Canonical Layer"]
+        CS["CanonicalTransaction\nCanonicalAccount\nPydantic models, frozen\nmodel validators enforce ID derivation"]
+        CAT["Categorization Engine\napply_category()\n3 rule groups, 68 keywords\nfirst-match, deterministic"]
+    end
 
-Categorization engine
-  apply_category()    stamps every transaction before it lands
-  3-group first-match: raw bank label > salary heuristic > 68 keywords
+    subgraph Store ["Landing Store (DuckDB)"]
+        DB[("landing.duckdb\nfirst-write-wins idempotency\nLandingConflictError on content change\nreplay = no-op")]
+    end
 
-Landing store (DuckDB, single file)
-  accounts + transactions
-  first-write-wins idempotency: replay = no-op, content change = loud error
-  LandingConflictError on any content disagreement
+    subgraph Contracts ["Data Contracts (CI-gated)"]
+        ART["Committed artifacts\n4 subjects, 42 fields\ncode-derived JSON"]
+        LED["_subjects_ledger.json\nappend-only floor\ndeleting an artifact = hard fail"]
+        CON["Consumer manifests\ncategorization_engine.json\nspend_mart.json\npinned fields + version"]
+    end
 
-Data contracts (code-derived, 4 subjects, 42 fields)
-  canonical_account.json        pydantic model -> JSON artifact
-  canonical_transaction.json    15 change types classified; semver bump enforced
-  landing_accounts.json         DDL specs -> JSON artifact
-  landing_transactions.json
+    subgraph Output ["Consumption"]
+        MART["Spend mart\nbuild_spend_mart()\noutflow by year/month/category"]
+        CLI["open-banking-mart\nformatted table CLI"]
+    end
 
-Consumer manifests (2)
-  categorization_engine.json    pins 7 canonical_transaction fields
-  spend_mart.json               pins 4 canonical_transaction fields
-
-Spend mart
-  build_spend_mart()   outflow spend by (year, month, category)
-  open-banking-mart    formatted table CLI
+    F --> FA
+    M --> MA
+    T --> TA
+    FA --> CS
+    MA --> CS
+    TA --> CS
+    CS --> CAT
+    CAT --> DB
+    DB --> MART
+    MART --> CLI
+    CS -.->|"version-gated"| ART
+    ART --> LED
+    ART --> CON
 ```
 
 ---
 
-## Quickstart
+## How to run
 
 ```bash
 git clone https://github.com/OmerTDK/open-banking-pipeline
@@ -86,17 +79,28 @@ make ingest      # land 46 fixture transactions into data/local/landing.duckdb
 make mart        # print spend summary from the local store
 ```
 
+All make targets:
+
+```
+ci                 Run the full CI suite locally
+lint               Ruff lint and format check
+test               Run the test suite
+ingest             Ingest all mock banks into data/local/landing.duckdb
+e2e                End-to-end into a throwaway store; second run must land zero new rows
+mart               Print spend-by-category-by-month from data/local/landing.duckdb
+contracts-generate Regenerate committed contract artifacts from code
+contracts-check    Fail on breaking or unregenerated contract changes (CI gate)
+docker-build       Build the project image
+docker-test        Run the test suite inside the image
+```
+
 ---
 
 ## The demonstrated caught break
 
-The brief requires a demonstrated breaking change caught by CI. Here it is.
+**Scenario:** a bank changes the `amount` field type from `decimal` to `string`. Without a contract gate, this reaches every consumer silently.
 
-**Scenario:** a bank changes the `amount` field type from `decimal` to `string`
-in its schema. Without a contract gate, this reaches every consumer silently.
-
-**What CI sees** (simulated by editing `contracts/canonical_transaction.json`
-and running `make contracts-check`):
+**What CI sees** (edit `contracts/canonical_transaction.json`, run `make contracts-check`):
 
 ```
 canonical_transaction.amount [breaking] type_changed:
@@ -110,32 +114,24 @@ contracts check: FAILED
 
 Exit code 1. PR cannot merge.
 
-**What fixing it looks like:**
+**Fixing it requires a coordinated change set:**
 
 1. Bump `canonical_transaction` to `2.0.0` in `src/.../contracts/versions.py`.
-2. Update `contracts/consumers/categorization_engine.json` and
-   `contracts/consumers/spend_mart.json` — both pin `amount` and must
-   acknowledge the new version, forcing a coordinated change set.
+2. Update both consumer manifests (`categorization_engine.json`, `spend_mart.json`) — both pin `amount` and must acknowledge the new version.
 3. Run `make contracts-generate` to regenerate the artifact.
 4. `make ci` passes.
 
-The consumer manifests are the key mechanism: a breaking change to a pinned
-field requires the consumer to acknowledge it in the same change set. Producer
-and consumer move together or CI holds.
+The consumer manifests are the enforcement mechanism: a breaking change to a pinned field cannot ship without the consumer acknowledging it in the same PR diff.
 
-Tests `TestContractGate::test_type_change_on_amount_is_a_breaking_change` and
-`test_removing_amount_field_from_contract_is_a_breaking_change` in
-`tests/test_e2e_pipeline.py` automate this scenario as part of the test suite.
+Tests `TestContractGate::test_type_change_on_amount_is_a_breaking_change` and `test_removing_amount_field_from_contract_is_a_breaking_change` (in `tests/test_e2e_pipeline.py`) automate this scenario as part of the standard test run.
 
 ---
 
 ## Kill-verified invariant
 
-The central reliability claim of the pipeline is first-write-wins idempotency:
-running ingestion twice produces zero new rows on the second run. The invariant
-lives in the `existing != record` branch of `LandingStore._insert_atomically`.
+The central reliability claim is first-write-wins idempotency: running ingestion twice produces zero new rows on the second run. The invariant lives in `LandingStore._insert_atomically`.
 
-**Kill-verify result (recorded in ADR-0006):**
+**Kill-verify result (ADR-0006):**
 
 Mutant applied: `elif existing != record:` → `elif existing == record:`
 
@@ -145,33 +141,30 @@ Mutant applied: `elif existing != record:` → `elif existing == record:`
 | `test_conflict_detection_kills_on_content_change` | FAILED — amended record accepted silently |
 | `test_seeded_fault_injection_produces_same_landing_data` | PASSED (unrelated path) |
 
-Mutant reverted → 383 passed, 0 failures.
+Mutant reverted. 383 passed, 0 failures.
 
-The kill proves the two tests target the right code path, not incidentally-true
-facts.
+The kill proves the two tests target the right branch, not incidentally-true behavior.
 
 ---
 
 ## Results
 
-All numbers from `make ci` on the fixture data (no cloud, no mocks beyond
-checked-in fixtures).
+All numbers from `make ci` on fixture data. No cloud. No mocks beyond checked-in fixtures.
 
 | Metric | Value |
 |---|---|
-| Test count | 383 tests, 0 failures |
-| Tests added this phase | 11 (was 372 after phase 3) |
+| Test count | **383 tests, 0 failures** |
 | `make ci` runtime | ~3 s |
-| Banks | 3 (fjellvik, marlstone, taktwerk) |
+| Banks | 3 (Fjellvik, Marlstone, Taktwerk) |
 | Accounts | 6 (2 per bank) |
-| Transactions | 46 total (15 + 16 + 15) |
-| Second-run new rows | 0 (replay-safe) |
-| Categories assigned | 12 of 14 categories reached; UNCATEGORIZED present, TRANSFER present |
+| Transactions ingested | 46 (15 + 16 + 15) |
+| Second-run new rows | **0** (replay-safe) |
+| Categories assigned | 12 of 14 categories reached in fixture data |
 | Total fixture outflow spend | EUR 7 690.64 (May 2026) |
-| Largest spend category | rent EUR 3 034.56 (3 transactions across all banks) |
+| Largest spend category | rent EUR 3 034.56 (3 transactions, 3 banks) |
 | Contract subjects | 4, code-derived, CI-gated |
 | Contract fields | 42 across the 4 subjects |
-| Consumer manifests | 2 (categorization_engine, spend_mart) |
+| Consumer manifests | 2 (`categorization_engine`, `spend_mart`) |
 | Change types classified | 15 (field removed, type changed, nullability, enum, etc.) |
 | Contract check runtime | ~0.1 s |
 
@@ -200,51 +193,35 @@ Total                                 7690.64
 
 ## The hardest design decision
 
-The hardest design decision is the subjects ledger in the contracts subsystem —
-not the canonical schema, which has an obvious shape once you accept the
-requirements.
+**The subjects ledger** — not the canonical schema, which has an obvious shape once you accept the requirements.
 
-**The problem:** What anchors the committed contract artifact as a baseline?
-If the artifact alone is the baseline, deleting it and re-running
-`make contracts-generate` silently resets history to current code — a breaking
-change ships with no version bump and CI stays green.
+**The problem:** what anchors the committed contract artifact as a baseline? If the artifact alone is the baseline, deleting it and re-running `make contracts-generate` silently resets history to current code — a breaking change ships with no version bump and CI stays green.
 
-**The candidates:**
+**Options evaluated:**
 
-| Option | Closes the delete-and-regenerate hole | Cost |
+| Approach | Closes the delete-and-regenerate hole | Cost |
 |---|---|---|
 | Committed artifacts only | No | None |
 | Git diff against merge-base | Yes | Requires git state inside the tool; test fixtures need a real git repo |
 | Subjects ledger (chosen) | Yes | One extra committed file; append-only |
 
-**The choice and its gap:** `contracts/_subjects_ledger.json` is an append-only
-map of subject → last recorded version. Deleting an artifact is a hard failure
-(the ledger records it existed). Rewinding a version is a hard failure (the
-artifact is behind the ledger floor). Forging continuity now requires editing
-the ledger and the artifact in the same change set — a two-file diff a reviewer
-cannot miss.
+**The choice and its residual gap:** `contracts/_subjects_ledger.json` is an append-only map of subject to last recorded version. Deleting an artifact is a hard failure. Rewinding a version is a hard failure. Forging continuity now requires editing the ledger and the artifact in the same change set — a two-file diff a reviewer cannot miss.
 
-What the ledger does not close: someone who hand-edits an artifact's field list
-while keeping the version (and the ledger entry) unchanged fools the tool,
-because the committed artifact and the code-derived one now agree. This is
-visible in the PR diff but invisible to automation.
+What the ledger does not close: hand-editing an artifact's field list while keeping the version (and the ledger entry) unchanged fools the tool, because the committed artifact and the code-derived one now agree. This is visible in the PR diff but invisible to automation.
 
-The git-baseline approach closes that gap but makes the detector depend on git
-state and requires cassette-style test fixtures. The ledger gives ~90% of the
-protection at near-zero cost. ADR-0006 documents the trade-off and the
-extension path. ADR-0004 documented the original design.
+The git-baseline approach closes that gap but makes the detector depend on git state and requires cassette-style test fixtures. The ledger gives ~90% of the protection at near-zero cost. Full analysis in ADR-0004 and ADR-0006.
 
 ---
 
-## Design decisions (ADR index)
+## Design decisions (ADRs)
 
 | ADR | Decision |
 |---|---|
-| [0001](docs/adr/0001-canonical-schema-and-mock-bank-strategy.md) | Canonical schema fields; three mock banks with divergent shapes; content-derived IDs for ID-less sources |
-| [0003](docs/adr/0003-mock-api-shapes-and-ingestion-architecture.md) | Mock API interaction shapes; ingestion architecture; idempotency and failure isolation |
-| [0004](docs/adr/0004-data-contracts-and-breaking-change-detection.md) | Code-derived contracts; 15-type change classifier; consumer manifest veto; subjects ledger |
-| [0005](docs/adr/0005-categorization-and-spend-mart.md) | First-match rule engine (3 groups, 68 keywords); runner placement; Q8 raw-replay decision; mart grain |
-| [0006](docs/adr/0006-e2e-validation-and-definition-of-done.md) | Two-layer e2e validation; kill-verified invariant; subjects ledger as the hardest decision |
+| [ADR-0001](docs/adr/0001-canonical-schema-and-mock-bank-strategy.md) | Canonical schema fields; three mock banks with divergent shapes; content-derived IDs for ID-less sources |
+| [ADR-0003](docs/adr/0003-mock-api-shapes-and-ingestion-architecture.md) | Mock API interaction shapes; ingestion architecture; idempotency and failure isolation |
+| [ADR-0004](docs/adr/0004-data-contracts-and-breaking-change-detection.md) | Code-derived contracts; 15-type change classifier; consumer manifest veto; subjects ledger |
+| [ADR-0005](docs/adr/0005-categorization-and-spend-mart.md) | First-match rule engine (3 groups, 68 keywords); runner placement; Q8 raw-replay decision; mart grain |
+| [ADR-0006](docs/adr/0006-e2e-validation-and-definition-of-done.md) | Two-layer e2e validation; kill-verified invariant; subjects ledger as the hardest decision |
 
 ---
 
@@ -252,23 +229,20 @@ extension path. ADR-0004 documented the original design.
 
 | Item | Status |
 |---|---|
-| README with system story and architecture diagram | **done** |
-| ADRs for each major decision (tradeoff documented) | **done** — ADR-0001, 0003, 0004, 0005, 0006 |
-| Full CI green — lint + tests on every PR | **done** — `make ci` ~3 s, 0 failures |
-| Meaningful tests beyond not_null/unique | **done** — conflict detection, category wiring, idempotency, reproducibility, contract gate, kill-verified invariant |
-| Observability (test results, freshness, anomalies) | **done** — `make e2e` prints per-bank counts + zero-new-rows check + spend mart; CI enforces on every PR |
-| Results section with quantified outcomes | **done** — 383 tests, 46 txns, EUR 7 690.64, ~3 s CI |
-| Generated docs published | **partial** — ADRs and README are the docs; a Sphinx/MkDocs HTML build is a future extension |
-| Short writeup of the hardest design decision | **done** — subjects ledger, above and in ADR-0006 |
-| Conforms to Omer's coding standards | **done** — ruff, uv, TDD, explicit columns, no SELECT *, type hints |
-| Public repo with clean history | **pending** — Omer flips visibility when ready |
+| README with system story and architecture diagram | done |
+| ADRs for each major decision (trade-off documented) | done — ADR-0001, 0003, 0004, 0005, 0006 |
+| Full CI green — lint + tests on every PR | done — `make ci` ~3 s, 0 failures |
+| Meaningful tests beyond not_null/unique | done — conflict detection, category wiring, idempotency, reproducibility, contract gate, kill-verified invariant |
+| Observability (test results, freshness, anomalies) | done — `make e2e` prints per-bank counts + zero-new-rows assertion + spend mart; CI enforces on every PR |
+| Results section with quantified outcomes | done — 383 tests, 46 transactions, EUR 7 690.64, ~3 s CI |
+| Generated docs published | partial — ADRs and this README are the docs; a Sphinx/MkDocs HTML site is a documented future extension (ADR-0006) |
+| Short writeup of the hardest design decision | done — subjects ledger, above and in ADR-0006 |
+| Conforms to coding standards | done — ruff, uv, TDD, type hints, no SELECT *, explicit columns |
+| Public repo with clean history | pending — visibility flip is the final step |
 
 Open questions deferred by design:
-- **Q7** (upstream corrections versioning) — first-write-wins raises
-  `LandingConflictError` on content change; the correction strategy (SCD2
-  append, reject-and-alert, or version column) is a future ADR.
-- **Q9** (git-baseline diffing) — the subjects ledger is the interim answer;
-  ADR-0006 documents the extension path.
+- **Q7** (upstream corrections) — first-write-wins raises `LandingConflictError` on content change; the correction strategy (SCD2 append, reject-and-alert, or version column) is a future ADR.
+- **Q9** (git-baseline diffing) — the subjects ledger is the interim answer; ADR-0006 documents the extension path.
 
 ---
 
