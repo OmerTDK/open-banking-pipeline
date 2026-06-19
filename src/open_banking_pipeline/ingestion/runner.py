@@ -17,6 +17,7 @@ from open_banking_pipeline.adapters import fjellvik as fjellvik_adapter
 from open_banking_pipeline.adapters import marlstone as marlstone_adapter
 from open_banking_pipeline.adapters import taktwerk as taktwerk_adapter
 from open_banking_pipeline.canonical import SourceBank
+from open_banking_pipeline.categorization import apply_category
 from open_banking_pipeline.errors import BankApiError
 from open_banking_pipeline.ingestion.landing import LandingStore
 from open_banking_pipeline.ingestion.retry import RetryPolicy
@@ -76,11 +77,12 @@ def run_ingestion(
                 )
             )
             continue
+        categorized_transactions = tuple(apply_category(tx) for tx in extract.transactions)
         bank_results.append(
             BankIngestionResult(
                 source_bank=source_bank,
                 accounts_loaded=store.insert_new_accounts(extract.accounts),
-                transactions_loaded=store.insert_new_transactions(extract.transactions),
+                transactions_loaded=store.insert_new_transactions(categorized_transactions),
             )
         )
     return IngestionReport(bank_results=tuple(bank_results))

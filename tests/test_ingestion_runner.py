@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from open_banking_pipeline.canonical import SourceBank
+from open_banking_pipeline.canonical import SourceBank, TransactionCategory
 from open_banking_pipeline.ingestion.landing import LandingStore
 from open_banking_pipeline.ingestion.retry import RetryPolicy
 from open_banking_pipeline.ingestion.runner import (
@@ -49,6 +49,24 @@ def ingest_fixtures(
 def store(tmp_path: Path) -> LandingStore:
     with LandingStore.open(tmp_path / "landing.duckdb") as landing_store:
         yield landing_store
+
+
+class TestCategorizationWiringInRunner:
+    """Runner must apply categorization before landing — not skip it."""
+
+    def test_runner_categorizes_transactions_before_landing(self, store: LandingStore) -> None:
+        # Marlstone fixture MS-TXN-88003 has category="Income" (raw_category rule → SALARY).
+        # If the runner skips apply_category, it lands as UNCATEGORIZED.
+        # Transaction ID is the canonical SHA-256 derived from (MARLSTONE, MS-330011, MS-TXN-88003).
+        salary_tx_id = "1f94c1953411d9b69c8af7a2324b68fd42272fe085eda1360159df828f0a2165"
+
+        ingest_fixtures(store)
+
+        tx = store.get_transaction(salary_tx_id)
+        assert tx is not None, "salary fixture transaction not found in store"
+        assert tx.category == TransactionCategory.SALARY, (
+            f"expected SALARY but got {tx.category!r} — runner may have skipped apply_category"
+        )
 
 
 class TestFullIngestion:
