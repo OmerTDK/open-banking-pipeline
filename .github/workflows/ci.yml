@@ -5,6 +5,13 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-test:
     runs-on: ubuntu-latest
@@ -17,3 +24,23 @@ jobs:
       - run: uv run pytest -v
       - run: make contracts-check
       - run: make e2e
+
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v8.2.0
+      - run: uv sync --locked
+      - name: bandit (Python SAST)
+        run: uv run bandit -r src -c pyproject.toml
+      - name: pip-audit (dependency CVEs)
+        run: uv run pip-audit
+      - name: gitleaks (secret scan)
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
