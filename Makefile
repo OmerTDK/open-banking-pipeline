@@ -33,6 +33,7 @@ e2e: ## End-to-end ingestion into a fresh throwaway store; the second run must l
 mart: ## Print spend-by-category-by-month from data/local/landing.duckdb
 	uv run open-banking-mart
 
+
 contracts-generate: ## Regenerate the committed contract artifacts from code
 	uv run open-banking-contracts generate
 
