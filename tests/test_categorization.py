@@ -204,8 +204,13 @@ def test_categorize_many_empty_input() -> None:
 
 def test_categorize_many_preserves_order() -> None:
     inputs = [
-        dict(amount=2450.00, description="Salary", counterparty_name=None, raw_category=None),
-        dict(amount=-9.99, description=None, counterparty_name=None, raw_category=None),
+        {
+            "amount": 2450.00,
+            "description": "Salary",
+            "counterparty_name": None,
+            "raw_category": None,
+        },
+        {"amount": -9.99, "description": None, "counterparty_name": None, "raw_category": None},
     ]
     results = categorize_many(inputs)
     assert results[0] == S
@@ -214,8 +219,13 @@ def test_categorize_many_preserves_order() -> None:
 
 def test_categorize_many_returns_one_per_input() -> None:
     inputs = [
-        dict(amount=-23.40, description="groceries", counterparty_name=None, raw_category=None),
-        dict(amount=-4.80, description="cafe", counterparty_name=None, raw_category=None),
+        {
+            "amount": -23.40,
+            "description": "groceries",
+            "counterparty_name": None,
+            "raw_category": None,
+        },
+        {"amount": -4.80, "description": "cafe", "counterparty_name": None, "raw_category": None},
     ]
     results = categorize_many(inputs)
     assert len(results) == 2

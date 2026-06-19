@@ -26,7 +26,7 @@ from open_banking_pipeline.canonical import CanonicalTransaction, TransactionCat
 # but values above this are almost certainly a salary or equivalent inflow.
 # The threshold sits between the smallest fixture salary (2 380.50) and the
 # largest non-salary inflow (300.00 savings transfer).
-SALARY_INFLOW_THRESHOLD = Decimal("1000")
+SALARY_INFLOW_THRESHOLD = Decimal(1000)
 
 # Raw category labels shipped by the mock banks (marlstone).
 # Mapping is case-insensitive (normalised to lower before lookup).

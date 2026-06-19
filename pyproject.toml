@@ -29,6 +29,10 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "ARG", "PTH", "RUF", "C4", "FURB
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
+skips = [
+    "B311",   # random used in mock bank failure simulation — not a security context
+    "B608",   # DuckDB SQL built from internal constants/column lists — no user input, no injection surface
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
